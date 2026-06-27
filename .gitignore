@@ -1,0 +1,43 @@
+# Local OS/editor metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local Python environments
+.venv/
+venv/
+env/
+
+# Local tool checkouts and plugin/runtime environments
+tools/
+
+# Generated canonical renders, Blender scenes, and reports
+outputs/
+
+# Local reference images kept outside Git.
+/2014-mol-mach-poster_editing_simplified*.jpg
+
+# Generated experiment artifacts kept locally only
+experiments/**/outputs/
+experiments/**/assets/pymol_exports/
+
+# Blender/editor generated backups and session files
+*.blend
+*.blend1
+*.blend2
+*.blend@
+*.MNSession
+
+# Regenerated PyMOL exports and scratch assets
+assets/pymol_exports/surface_assets/
+assets/pymol_exports/scratch/

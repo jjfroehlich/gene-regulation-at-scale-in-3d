@@ -1,0 +1,255 @@
+{
+  "title": "Procedural nucleic-acid pseudoatom assets",
+  "coordinate_units": "angstrom",
+  "note": "mmCIF is used for PyMOL export because full-scene Angstrom coordinates exceed fixed-width PDB coordinate columns.",
+  "angstrom_to_mm": 0.04,
+  "assets": [
+    {
+      "id": "DNA_PROXY",
+      "path": "assets/procedural_nucleic_acids/cif/DNA_PROXY.cif",
+      "atom_count": 60815,
+      "components": {
+        "strand_A": "chain A",
+        "strand_B": "chain B",
+        "base_pairs": "chain C"
+      },
+      "geometry": {
+        "style": "procedural_pymol_surface_proxy_repaired",
+        "handedness": "right_handed",
+        "theta_sign": -1,
+        "axis_length_mm": 258.3432570566669,
+        "represented_bp": 1900,
+        "bp_spacing_mm": 0.136,
+        "pitch_bp": 10.5,
+        "strand_center_radius_mm": 0.314,
+        "strand_radius_mm": 0.086,
+        "surface_vdw_A": 2.15,
+        "target_envelope_diameter_mm": 0.8,
+        "estimated_envelope_diameter_mm": 0.8,
+        "strand_a_length_mm": 437.2179635210249,
+        "base_atoms_per_pair": 11,
+        "nucleosome_loop": {
+          "enabled": true,
+          "basis": "pdb_guided_base_pair_centerline",
+          "source_pdb_id": "1AOI",
+          "source_bp_count": 146,
+          "center_mm": [
+            72.0,
+            -45.0,
+            0.0
+          ],
+          "roll_deg": 10.0,
+          "pairing": "reverse_order",
+          "requested_pairing": "auto_antiparallel_min_distance",
+          "candidate_pair_distances_A": {
+            "same_order": {
+              "mean": 64.4300237002868,
+              "min": 10.01213748407402,
+              "max": 106.84711559045475
+            },
+            "reverse_order": {
+              "mean": 19.02114815839981,
+              "min": 13.723195269706464,
+              "max": 20.957196520527262
+            }
+          },
+          "mean_pair_distance_A": 19.02114815839981,
+          "min_pair_distance_A": 13.723195269706464,
+          "max_pair_distance_A": 20.957196520527262,
+          "superhelical_handedness": "left",
+          "superhelical_turns": -1.8157208276989059,
+          "mean_superhelical_radius_A": 42.25393611748707,
+          "mean_superhelical_radius_mm": 1.690157444699483,
+          "height_span_A": 34.54512689503998,
+          "height_span_mm": 1.3818050758015992,
+          "source_path_length_A": 506.891214697618,
+          "terminal_distance_A": 65.98595613740893,
+          "approximate_centerline_length_mm": 20.275648587904726,
+          "approximate_bp_equivalent": 149.08565138165238,
+          "scene_bounds": {
+            "min_mm": [
+              70.28591341880325,
+              -47.03961661899515,
+              -0.6911059208946757
+            ],
+            "max_mm": [
+              73.80517202835415,
+              -43.33400374257509,
+              0.6906991549069237
+            ],
+            "bbox_mm": [
+              3.519258609550903,
+              3.705612876420055,
+              1.3818050758015994
+            ]
+          },
+          "source_center_A": [
+            45.96163641552509,
+            89.35267351598173,
+            6.474281202435319
+          ],
+          "source_basis": [
+            [
+              0.9938344169121475,
+              -0.08082324233885528,
+              -0.07589963938469613
+            ],
+            [
+              -0.07240790850235626,
+              -0.991538179314095,
+              0.10774569016347676
+            ],
+            [
+              -0.08396574627314786,
+              -0.1015856410144869,
+              -0.9912770102208913
+            ]
+          ],
+          "target_basis": [
+            [
+              0.984807753012208,
+              0.17364817766693033,
+              0.0
+            ],
+            [
+              -0.17364817766693036,
+              0.9848077530122082,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ]
+        },
+        "strand_connectors_per_bp_step": 2,
+        "base_stack_connectors_per_bp_step": 1,
+        "original_max_strand_center_spacing_A": 14.201419987539335,
+        "repaired_max_strand_center_spacing_A": 4.733806662513219,
+        "original_max_base_stack_spacing_A": 11.748806681989622,
+        "repaired_max_base_stack_spacing_A": 5.874403340994811,
+        "surface_export_vdw_A": 2.4
+      }
+    },
+    {
+      "id": "MRNA_PROXY",
+      "path": "assets/procedural_nucleic_acids/cif/MRNA_PROXY.cif",
+      "atom_count": 12955,
+      "components": {
+        "utr5": "chain A",
+        "coding": "chain B",
+        "utr3": "chain C"
+      },
+      "geometry": {
+        "style": "procedural_pymol_surface_proxy_repaired",
+        "path_generator": "deterministic_correlated_random_control_path",
+        "segments": [
+          {
+            "name": "5' UTR",
+            "original_max_backbone_spacing_A": 3.000000000000103,
+            "repaired_max_backbone_spacing_A": 1.0000000000001106
+          },
+          {
+            "name": "coding sequence",
+            "original_max_backbone_spacing_A": 3.0000000000003624,
+            "repaired_max_backbone_spacing_A": 1.0000000000003517
+          },
+          {
+            "name": "3' UTR",
+            "original_max_backbone_spacing_A": 3.000000000000423,
+            "repaired_max_backbone_spacing_A": 1.0000000000003169
+          }
+        ],
+        "total_measured_mm": 222.24,
+        "total_end_to_end_mm": 184.4845855816662,
+        "contour_to_max_extent_ratio": 1.206121700646062,
+        "bbox": {
+          "min_mm": [
+            -112.0,
+            31.014948666136178,
+            -1.2827087319487671
+          ],
+          "max_mm": [
+            72.2600128004965,
+            43.59195143245099,
+            1.3304440030333844
+          ],
+          "bbox_mm": [
+            184.2600128004965,
+            12.577002766314813,
+            2.6131527349821515
+          ]
+        },
+        "marker_interval_nt": 50,
+        "surface_vdw_A": 2.0,
+        "base_offset_mm": 0.16,
+        "backbone_connectors_per_nt_step": 2,
+        "sugar_connectors_per_nt_step": 1,
+        "surface_export_vdw_A": 2.2
+      }
+    },
+    {
+      "id": "MRNA_COMPACT_PROXY",
+      "path": "assets/procedural_nucleic_acids/cif/MRNA_COMPACT_PROXY.cif",
+      "atom_count": 12955,
+      "components": {
+        "utr5": "chain A",
+        "coding": "chain B",
+        "utr3": "chain C"
+      },
+      "geometry": {
+        "style": "procedural_pymol_surface_proxy_repaired",
+        "path_generator": "continuous_mRNP_rosette_hairpin_globule",
+        "segments": [
+          {
+            "name": "5' UTR",
+            "original_max_backbone_spacing_A": 2.999753178748923,
+            "repaired_max_backbone_spacing_A": 0.9999177262496476
+          },
+          {
+            "name": "coding sequence",
+            "original_max_backbone_spacing_A": 2.999772281635861,
+            "repaired_max_backbone_spacing_A": 0.9999240938788626
+          },
+          {
+            "name": "3' UTR",
+            "original_max_backbone_spacing_A": 2.999763572917891,
+            "repaired_max_backbone_spacing_A": 0.9999211909728738
+          }
+        ],
+        "total_measured_mm": 222.2382571167487,
+        "total_end_to_end_mm": 0.9535105185540814,
+        "contour_to_max_extent_ratio": 28.07497862910017,
+        "bbox": {
+          "min_mm": [
+            62.23004476202642,
+            40.00468622029118,
+            -1.7772992611179195
+          ],
+          "max_mm": [
+            70.1459281560175,
+            46.11002081804243,
+            1.7382098707032712
+          ],
+          "bbox_mm": [
+            7.915883393991088,
+            6.105334597751252,
+            3.5155091318211906
+          ]
+        },
+        "marker_interval_nt": 50,
+        "surface_vdw_A": 2.0,
+        "base_offset_mm": 0.16,
+        "model_basis": {
+          "biological_intent": "schematic compact mRNP-like fold with many local hairpin/rosette turns",
+          "not_sequence_specific": true,
+          "translation_state": "compact non-translating or storage/stress-associated mRNP, for visual contrast with elongated mRNA"
+        },
+        "backbone_connectors_per_nt_step": 2,
+        "sugar_connectors_per_nt_step": 1,
+        "surface_export_vdw_A": 2.2
+      }
+    }
+  ]
+}

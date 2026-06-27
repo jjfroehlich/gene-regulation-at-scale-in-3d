@@ -1,0 +1,1201 @@
+{
+  "title": "Scale-accurate gene expression scene - canonical V4 ACTB full-gene contact layout",
+  "units": {
+    "blender_unit": "millimeter",
+    "angstrom_to_mm": 0.04,
+    "nm_to_mm": 0.4,
+    "dna_bp_rise_nm": 0.34,
+    "mrna_nt_contour_nm": 0.3,
+    "dna_bp_to_mm": 0.136,
+    "mrna_nt_to_mm": 0.12
+  },
+  "outputs": {
+    "blend": "outputs/canonical/gene_expression_surface_style_v4.blend",
+    "preview": "outputs/canonical/preview_gene_expression_surface_style_v4.png",
+    "report": "outputs/canonical/gene_expression_surface_scene_v4_report.json"
+  },
+  "legacy_outputs": {
+    "blend": "experiments/archive_v1/outputs/gene_expression_at_scale.blend",
+    "preview": "experiments/archive_v1/outputs/preview_gene_expression_at_scale.png",
+    "report": "experiments/archive_v1/outputs/gene_expression_scene_report.json"
+  },
+  "collections": [
+    "DNA",
+    "mRNA",
+    "Transcription",
+    "Translation",
+    "RBPs",
+    "Reference protein",
+    "Labels",
+    "Scale bars"
+  ],
+  "mrna": {
+    "name": "actin mRNA",
+    "total_nt": 1852,
+    "segments": [
+      {
+        "name": "5' UTR",
+        "nt": 84,
+        "color": "olive",
+        "track_y_mm": 39.0,
+        "label_location_mm": [
+          24.66291500745462,
+          -21.21884315671511,
+          0.3
+        ]
+      },
+      {
+        "name": "coding sequence",
+        "nt": 1125,
+        "color": "orange",
+        "track_y_mm": 39.0,
+        "label_location_mm": [
+          24.66291500745462,
+          -21.21884315671511,
+          0.3
+        ]
+      },
+      {
+        "name": "3' UTR",
+        "nt": 643,
+        "color": "yellow_olive",
+        "track_y_mm": 24.0,
+        "label_location_mm": [
+          24.66291500745462,
+          -21.21884315671511,
+          0.3
+        ]
+      }
+    ],
+    "start_mm": [
+      34.66291500745462,
+      -33.21884315671511,
+      0.0582162946432483
+    ],
+    "tube_radius_mm": 0.2,
+    "wave_amplitude_mm": 2.2,
+    "wave_period_mm": 8.5
+  },
+  "dna": {
+    "name": "genomic DNA",
+    "start_x_mm": -112.0,
+    "end_x_mm": 108.0,
+    "y_mm": -45.0,
+    "center_z_mm": 0.0,
+    "helix_radius_mm": 0.4,
+    "strand_radius_mm": 0.055,
+    "rung_radius_mm": 0.028,
+    "rung_every_bp": 10
+  },
+  "procedural_nucleic_acids": {
+    "dna": {
+      "style": "direct_blender_surface_proxy_polished",
+      "bp_per_turn": 10.5,
+      "theta_sign": -1,
+      "envelope_diameter_nm": 2.0,
+      "surface_vdw_A": 2.15,
+      "strand_center_radius_mm": 0.314,
+      "strand_sides": 12,
+      "strand_radius_mm": 0.12,
+      "base_atoms_per_pair": 11,
+      "base_pair_radius_mm": 0.082,
+      "base_pair_sides": 10,
+      "base_pair_every_bp": 1,
+      "base_stack_radius_mm": 0.172,
+      "base_stack_sides": 12,
+      "surface_bump_amplitude": 0.05,
+      "direct_voxel_size_mm": 0.052,
+      "direct_smooth_factor": 0.035,
+      "direct_smooth_iterations": 1,
+      "direct_unified_mesh": true,
+      "nucleosome_loop": {
+        "enabled": true,
+        "source_pdb_id": "1AOI",
+        "chain_a": "I",
+        "chain_b": "J",
+        "pairing": "auto_antiparallel_min_distance",
+        "center_mm": [
+          72.0,
+          -45.0,
+          0.0
+        ],
+        "roll_deg": 10.0,
+        "entry_bridge_mm": 6.0,
+        "exit_bridge_mm": 6.0,
+        "radius_mm": 1.93,
+        "turns": 1.9,
+        "direction": -1,
+        "start_angle_deg": 205.0,
+        "z_rise_mm": 1.5,
+        "samples": 112
+      },
+      "path_mode": "full_gene_serpentine_with_nucleosome_loop",
+      "gene_annotation": {
+        "basis": "human ACTB canonical 3454 bp genomic transcript span plus 500 bp upstream promoter",
+        "actb_canonical_gene_bp": 3454,
+        "upstream_promoter_bp": 500,
+        "total_bp": 3954,
+        "tss_bp": 500,
+        "segments": [
+          {
+            "name": "ACTB upstream promoter",
+            "kind": "promoter",
+            "length_bp": 500,
+            "material": "dna_promoter_blue"
+          },
+          {
+            "name": "ACTB exon 1",
+            "kind": "exon",
+            "length_bp": 78,
+            "material": "dna_exon_orange"
+          },
+          {
+            "name": "ACTB intron 1",
+            "kind": "intron",
+            "length_bp": 860,
+            "material": "dna_intron_olive"
+          },
+          {
+            "name": "ACTB exon 2",
+            "kind": "exon",
+            "length_bp": 129,
+            "material": "dna_exon_orange"
+          },
+          {
+            "name": "ACTB intron 2",
+            "kind": "intron",
+            "length_bp": 134,
+            "material": "dna_intron_olive"
+          },
+          {
+            "name": "ACTB exon 3",
+            "kind": "exon",
+            "length_bp": 240,
+            "material": "dna_exon_orange"
+          },
+          {
+            "name": "ACTB intron 3",
+            "kind": "intron",
+            "length_bp": 441,
+            "material": "dna_intron_olive"
+          },
+          {
+            "name": "ACTB exon 4",
+            "kind": "exon",
+            "length_bp": 439,
+            "material": "dna_exon_orange"
+          },
+          {
+            "name": "ACTB intron 4",
+            "kind": "intron",
+            "length_bp": 95,
+            "material": "dna_intron_olive"
+          },
+          {
+            "name": "ACTB exon 5",
+            "kind": "exon",
+            "length_bp": 182,
+            "material": "dna_exon_orange"
+          },
+          {
+            "name": "ACTB intron 5",
+            "kind": "intron",
+            "length_bp": 112,
+            "material": "dna_intron_olive"
+          },
+          {
+            "name": "ACTB exon 6",
+            "kind": "exon",
+            "length_bp": 744,
+            "material": "dna_exon_orange"
+          }
+        ]
+      },
+      "full_gene_serpentine": {
+        "center_mm": [
+          0.0,
+          -9.0,
+          0.0
+        ],
+        "target_bp": 3954,
+        "width_mm": 112.0,
+        "height_mm": 74.0,
+        "lanes": 6,
+        "samples_per_lane": 16,
+        "irregularity_mm": 3.2,
+        "z_irregularity_mm": 0.42,
+        "phase": 0.53,
+        "length_variation": 0.23,
+        "nucleosome_loop_fraction": 0.42,
+        "nucleosome_loop_roll_offset_deg": 0.0,
+        "nucleosome_entry_bridge_mm": 8.0,
+        "nucleosome_exit_bridge_mm": 8.0
+      }
+    },
+    "mrna": {
+      "style": "direct_blender_surface_proxy_polished",
+      "surface_vdw_A": 2.0,
+      "tube_radius_mm": 0.165,
+      "tube_sides": 12,
+      "surface_bump_amplitude": 0.1,
+      "base_lobe_radius_mm": 0.095,
+      "base_lobe_every_nt": 1,
+      "base_lobe_sides": 8,
+      "base_offset_mm": 0.17,
+      "base_mid_offset_mm": 0.115,
+      "sugar_offset_mm": 0.065,
+      "nucleotide_detail_every_nt": 1,
+      "phosphate_radius_mm": 0.09,
+      "sugar_radius_mm": 0.085,
+      "rna_base_ellipsoid_radii_mm": [
+        0.135,
+        0.078,
+        0.055
+      ],
+      "base_connector_radius_mm": 0.048,
+      "nucleotide_detail_rings": 5,
+      "nucleotide_detail_sides": 8,
+      "direct_voxel_size_mm": 0.05,
+      "direct_smooth_factor": 0.028,
+      "direct_smooth_iterations": 1,
+      "direct_unified_mesh": true,
+      "compact_center_mm": [
+        78.0,
+        42.0,
+        18.0
+      ],
+      "compact_width_mm": 10.5,
+      "compact_height_mm": 8.0,
+      "compact_depth_mm": 3.4,
+      "compact_seed": 304,
+      "path_mode": "arrangement_v1_polymerase_spiral",
+      "arrangement_v1": {
+        "start_mm": [
+          34.66291500745462,
+          -33.21884315671511,
+          0.0582162946432483
+        ],
+        "start_radius_mm": 22.0,
+        "end_radius_mm": 7.0,
+        "vertical_rise_mm": 80.0,
+        "rise_axis": "z",
+        "start_angle_deg": 0.0,
+        "orientation": 1.0,
+        "samples": 2400,
+        "min_turns": 0.8,
+        "max_turns": 4.5,
+        "radial_irregularity_mm": 2.2,
+        "vertical_irregularity_mm": 2.0,
+        "lateral_irregularity_mm": 3.6,
+        "z_irregularity_mm": 1.0
+      }
+    }
+  },
+  "nucleic_acid_calibrators": {
+    "dna": [
+      {
+        "pdb_id": "1BNA",
+        "source": "https://www.rcsb.org/structure/1BNA",
+        "note": "canonical B-DNA dodecamer"
+      },
+      {
+        "pdb_id": "9A9N",
+        "source": "https://www.rcsb.org/structure/9A9N",
+        "note": "additional DNA-containing structure"
+      },
+      {
+        "pdb_id": "6BY7",
+        "source": "https://www.rcsb.org/structure/6BY7",
+        "note": "additional DNA-containing structure"
+      }
+    ],
+    "rna": [
+      {
+        "pdb_id": "4WQR",
+        "source": "https://www.rcsb.org/structure/4WQR",
+        "note": "RNA-containing RNASolo candidate"
+      },
+      {
+        "pdb_id": "8QHU",
+        "source": "https://www.rcsb.org/structure/8QHU",
+        "note": "RNA-containing RNASolo candidate"
+      },
+      {
+        "pdb_id": "9FXO",
+        "source": "https://www.rcsb.org/structure/9FXO",
+        "note": "RNA-containing RNASolo candidate"
+      },
+      {
+        "pdb_id": "8UQP",
+        "source": "https://www.rcsb.org/structure/8UQP",
+        "note": "RNA-containing RNASolo candidate"
+      },
+      {
+        "pdb_id": "8VSA",
+        "source": "https://www.rcsb.org/structure/8VSA",
+        "note": "RNA-containing RNASolo candidate"
+      },
+      {
+        "pdb_id": "9IOB",
+        "source": "https://www.rcsb.org/structure/9IOB",
+        "note": "RNA-containing RNASolo candidate"
+      }
+    ]
+  },
+  "pdb_assets": [
+    {
+      "name": "RNA polymerase II elongation complex",
+      "pdb_id": "2E2I",
+      "collection": "Transcription",
+      "role": "RNA Pol II elongation complex on DNA",
+      "location_mm": [
+        22.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        1.5,
+        -13.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -18.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 4000,
+      "bead_radius_A": 2.7,
+      "protein_color": "pol_green",
+      "nucleic_color": "rna_red",
+      "source": "https://www.rcsb.org/structure/2E2I",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.12645422357106728,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -18.0,
+        "binding_mode": "co_crystal_dna_axis",
+        "distance_mm": 68.0
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Ribosome small subunit",
+      "pdb_id": "1J5E",
+      "collection": "Translation",
+      "role": "ribosome upper subunit above mRNA",
+      "location_mm": [
+        -13.5,
+        43.2,
+        3.8
+      ],
+      "label_offset_mm": [
+        7.0,
+        12.0,
+        0.4
+      ],
+      "rotation_deg": [
+        74.0,
+        0.0,
+        20.0
+      ],
+      "max_beads": 25000,
+      "bead_radius_A": 3.0,
+      "protein_color": "ribosome_blue",
+      "nucleic_color": "ribosome_red",
+      "source": "https://www.rcsb.org/structure/1J5E",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.895,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 20.0,
+        "binding_mode": "co_crystal_rna_bracket"
+      },
+      "anchor_kind": "nucleic",
+      "binding_side_mm": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "v4_contact_role": "mrna_bracket_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Ribosome large subunit",
+      "pdb_id": "1JJ2",
+      "collection": "Translation",
+      "role": "ribosome lower subunit below mRNA",
+      "location_mm": [
+        -13.5,
+        36.8,
+        2.0
+      ],
+      "label_offset_mm": [
+        7.0,
+        -10.0,
+        0.4
+      ],
+      "rotation_deg": [
+        74.0,
+        0.0,
+        20.0
+      ],
+      "max_beads": 25000,
+      "bead_radius_A": 3.0,
+      "protein_color": "ribosome_blue",
+      "nucleic_color": "ribosome_red",
+      "source": "https://www.rcsb.org/structure/1JJ2",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.89,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 20.0,
+        "binding_mode": "co_crystal_rna_bracket"
+      },
+      "anchor_kind": "nucleic",
+      "binding_side_mm": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "v4_contact_role": "mrna_bracket_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Standalone tRNA",
+      "pdb_id": "4TNA",
+      "collection": "Translation",
+      "role": "free tRNA near translating ribosome",
+      "location_mm": [
+        -4.0,
+        55.0,
+        3.0
+      ],
+      "label_offset_mm": [
+        4.0,
+        7.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -20.0
+      ],
+      "anchor_kind": "nucleic",
+      "max_beads": 120,
+      "bead_radius_A": 2.4,
+      "protein_color": "rna_red",
+      "nucleic_color": "rna_red",
+      "source": "https://www.rcsb.org/structure/4TNA",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.915,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -20.0,
+        "binding_mode": "co_crystal_rna_axis"
+      },
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Nucleosome",
+      "pdb_id": "1AOI",
+      "collection": "DNA",
+      "role": "nucleosome on DNA",
+      "location_mm": [
+        72.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        -12.0,
+        8.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_kind": "nucleic",
+      "show_alignment_nucleic": false,
+      "max_beads": 1500,
+      "bead_radius_A": 2.5,
+      "protein_color": "tf_purple",
+      "nucleic_color": "dna_orange",
+      "source": "https://www.rcsb.org/structure/1AOI",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.42,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 0.0,
+        "binding_mode": "wrapped_nucleosome_loop"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Cas9",
+      "pdb_id": "4UN3",
+      "collection": "DNA",
+      "role": "Cas9-DNA complex",
+      "location_mm": [
+        -98.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        0.0,
+        9.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        24.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 1600,
+      "bead_radius_A": 2.7,
+      "protein_color": "cas9_blue",
+      "nucleic_color": "guide_orange",
+      "source": "https://www.rcsb.org/structure/4UN3",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.075,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 24.0,
+        "binding_mode": "co_crystal_dna_axis"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Actin protein",
+      "pdb_id": "1J6Z",
+      "collection": "Reference protein",
+      "role": "374 aa actin protein product",
+      "location_mm": [
+        14.94627595125148,
+        -32.565817653566086,
+        100.05821629463172
+      ],
+      "label_offset_mm": [
+        0.0,
+        8.0,
+        0.4
+      ],
+      "rotation_deg": [
+        72.0,
+        0.0,
+        18.0
+      ],
+      "max_beads": 430,
+      "bead_radius_A": 2.5,
+      "protein_color": "actin_blue",
+      "nucleic_color": "rna_red",
+      "source": "https://www.rcsb.org/structure/1J6Z",
+      "arrangement_v2_positioning": {
+        "mode": "centered_above_rna_spiral",
+        "rna_top_mm": [
+          15.986013594298594,
+          -27.05791662070897,
+          82.05821629463172
+        ],
+        "center_xy_mm": [
+          14.94627595125148,
+          -32.565817653566086
+        ],
+        "vertical_offset_mm": 18.0
+      },
+      "v4_contact_role": "product_exempt",
+      "strict_contact_required": false
+    },
+    {
+      "name": "Transcription factor 1",
+      "pdb_id": "6ML2",
+      "collection": "Transcription",
+      "role": "TF on DNA",
+      "location_mm": [
+        -35.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        -3.0,
+        13.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -20.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 600,
+      "bead_radius_A": 2.4,
+      "protein_color": "tf_cyan",
+      "nucleic_color": "dna_orange",
+      "source": "https://www.rcsb.org/structure/6ML2",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.105,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -20.0,
+        "binding_mode": "co_crystal_dna_axis"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Transcription factor 4",
+      "pdb_id": "6KKS",
+      "collection": "Transcription",
+      "role": "TF on DNA",
+      "location_mm": [
+        -50.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        -5.0,
+        12.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 240,
+      "bead_radius_A": 2.4,
+      "protein_color": "tf_cyan",
+      "nucleic_color": "dna_orange",
+      "source": "https://www.rcsb.org/structure/6KKS",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.045,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 8.0,
+        "binding_mode": "co_crystal_dna_axis"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "p53 tetramer bound to DNA",
+      "pdb_id": "3TS8",
+      "collection": "Transcription",
+      "role": "p53 tetramer transcription factor on DNA",
+      "location_mm": [
+        -20.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        0.0,
+        16.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        12.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 360,
+      "bead_radius_A": 2.4,
+      "protein_color": "tf_lavender",
+      "nucleic_color": "dna_orange",
+      "source": "https://www.rcsb.org/structure/3TS8",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.205,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 12.0,
+        "binding_mode": "co_crystal_dna_axis"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Transcription factor 3",
+      "pdb_id": "3G73",
+      "collection": "Transcription",
+      "role": "TF on DNA",
+      "location_mm": [
+        -6.0,
+        -45.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        3.0,
+        13.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 420,
+      "bead_radius_A": 2.4,
+      "protein_color": "tf_purple",
+      "nucleic_color": "dna_orange",
+      "source": "https://www.rcsb.org/structure/3G73",
+      "path_anchor": {
+        "path": "dna",
+        "fraction": 0.295,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -5.0,
+        "binding_mode": "co_crystal_dna_axis"
+      },
+      "v4_contact_role": "dna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Argonaute",
+      "pdb_id": "1U04",
+      "collection": "RBPs",
+      "role": "RBP on 3' UTR",
+      "location_mm": [
+        30.0,
+        24.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        4.0,
+        10.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "anchor_kind": "protein_surface",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 1000,
+      "bead_radius_A": 2.6,
+      "protein_color": "ago_pink",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/1U04",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.54,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 8.0,
+        "binding_mode": "protein_surface_rna_contact"
+      },
+      "binding_side_mm": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Poly(A)-binding RBP",
+      "pdb_id": "1CVJ",
+      "collection": "RBPs",
+      "role": "additional RBP on 3' UTR",
+      "location_mm": [
+        46.0,
+        24.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        -2.0,
+        13.5,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -8.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 1400,
+      "bead_radius_A": 2.5,
+      "protein_color": "ago_pink",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/1CVJ",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.76,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -8.0,
+        "binding_mode": "co_crystal_rna_axis"
+      },
+      "hide_alignment_nucleic": true,
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "HuR-like RBP",
+      "pdb_id": "4ED5",
+      "collection": "RBPs",
+      "role": "additional RBP on 3' UTR",
+      "location_mm": [
+        58.0,
+        30.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        7.0,
+        5.5,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        10.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 430,
+      "bead_radius_A": 2.5,
+      "protein_color": "rbp_purple",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/4ED5",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.64,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 10.0,
+        "binding_mode": "co_crystal_rna_axis"
+      },
+      "hide_alignment_nucleic": true,
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "Pumilio RBP",
+      "pdb_id": "3Q0Q",
+      "collection": "RBPs",
+      "role": "generic RBP on 3' UTR",
+      "location_mm": [
+        -2.0,
+        24.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        -6.0,
+        10.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -12.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 560,
+      "bead_radius_A": 2.5,
+      "protein_color": "rbp_purple",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/3Q0Q",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.2,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": -12.0,
+        "binding_mode": "co_crystal_rna_axis"
+      },
+      "hide_alignment_nucleic": true,
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "MS2 coat protein MCP",
+      "pdb_id": "1ZDH",
+      "collection": "RBPs",
+      "role": "MCP-RFP RNA-binding module",
+      "location_mm": [
+        14.0,
+        24.0,
+        0.0
+      ],
+      "label_offset_mm": [
+        0.0,
+        13.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        16.0
+      ],
+      "anchor_kind": "nucleic",
+      "align_nucleic_axis_to": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "max_beads": 420,
+      "bead_radius_A": 2.5,
+      "protein_color": "mcp_blue",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/1ZDH",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.34,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "roll_deg": 16.0,
+        "binding_mode": "co_crystal_rna_axis"
+      },
+      "hide_alignment_nucleic": true,
+      "v4_contact_role": "mrna_strict_contact",
+      "strict_contact_required": true
+    },
+    {
+      "name": "mCherry/RFP tag",
+      "pdb_id": "2H5Q",
+      "collection": "RBPs",
+      "role": "RFP tag for MCP-RFP",
+      "location_mm": [
+        17.5,
+        30.0,
+        2.0
+      ],
+      "label_offset_mm": [
+        5.0,
+        9.0,
+        0.4
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -18.0
+      ],
+      "max_beads": 310,
+      "bead_radius_A": 2.5,
+      "protein_color": "rfp_red",
+      "nucleic_color": "rna_gold",
+      "source": "https://www.rcsb.org/structure/2H5Q",
+      "path_anchor": {
+        "path": "mrna",
+        "fraction": 0.355,
+        "offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_local_mm": [
+          2.2,
+          1.2,
+          2.0
+        ],
+        "roll_deg": -18.0,
+        "binding_mode": "display_tag_near_mrna"
+      },
+      "v4_contact_role": "display_exempt",
+      "strict_contact_required": false
+    }
+  ],
+  "reference_links": [
+    "https://pdb101.rcsb.org/motm/181",
+    "https://pdb101.rcsb.org/motm/98",
+    "https://pdb101.rcsb.org/motm/112",
+    "https://pdb101.rcsb.org/motm/31",
+    "https://pdb101.rcsb.org/motm/40",
+    "https://pdb101.rcsb.org/motm/121",
+    "https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/",
+    "https://cdn.rcsb.org/pdb101/molecular-machinery/"
+  ],
+  "canonical_version": "v4",
+  "layout_intent": {
+    "source_layout": "experiments/arrangement_v2",
+    "dna": "full ACTB canonical gene span plus 500 bp upstream promoter, folded into the arrangement V2 serpentine base",
+    "mrna": "full-length actin mRNA starts at RNA polymerase II/TSS and rises as the arrangement V2 spiral",
+    "contact_policy": "co-crystal nucleic guides are aligned to procedural DNA/RNA paths with near-zero guide offsets",
+    "compact_reference": "separate compact full-length mRNP-like mRNA remains visible as a secondary reference"
+  }
+}

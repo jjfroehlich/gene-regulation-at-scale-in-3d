@@ -1,0 +1,12 @@
+# Avoid expensive or noisy text diffs for scientific/binary assets.
+*.blend binary
+*.blend1 binary
+*.blend2 binary
+*.MNSession binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.cif binary
+*.obj binary
+*.pdb binary
+
