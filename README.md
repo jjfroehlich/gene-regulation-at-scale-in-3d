@@ -1,82 +1,95 @@
-# Scale-Accurate Gene Expression Scene
+# Gene Regulation at Scale in 3D
 
-This repository now has a canonical V4 workflow for the main 3D scene, preserved V3 outputs as an intermediate backup, and separate folders for experiments.
+A Blender/PyMOL workflow for building a scale-accurate 3D scene of transcriptional and post-transcriptional control of gene expression. The canonical V5 scene combines PDB-derived molecular surfaces with directly generated DNA/RNA meshes at one shared scale: `1 nm = 0.4 mm`.
+
+The scene follows an ACTB promoter-plus-gene DNA path, a full-length actin mRNA spiral, RNA- and DNA-bound regulatory proteins, ribosomal translation machinery, and an actin protein product reference.
+
+![Canonical V5 overview render](docs/images/v5-overview.jpg)
+
+## Render Gallery
+
+| Canonical overview | Transcription start |
+| --- | --- |
+| ![Full canonical V5 overview](docs/images/v5-overview.jpg) | ![RNA polymerase II and nascent RNA detail](docs/images/v5-transcription-start.jpg) |
+
+| Nucleosome loop | Translation and compact mRNA |
+| --- | --- |
+| ![Nucleosome loop detail](docs/images/v5-nucleosome-loop.jpg) | ![Ribosome, actin product, and compact mRNA reference](docs/images/v5-translation.jpg) |
+
+![Compact mRNP-like full-length mRNA reference](docs/images/v5-compact-mrna.jpg)
+
+## What It Builds
+
+- Full ACTB promoter-plus-gene DNA path: `3,454 bp` canonical ACTB span plus `500 bp` upstream promoter, for `3,954 bp` total.
+- Full-length actin mRNA: `1,852 nt`, split into `5' UTR`, coding sequence, and `3' UTR` segments.
+- Direct Blender DNA/RNA surface proxies with base-level detail and a shared physical scale.
+- Reduced PyMOL molecular surfaces for PDB-derived proteins and nucleoprotein complexes.
+- Strict guide-to-path contact validation for DNA- and RNA-bound proteins.
+
+Current V5 PDB-derived scene assets include RNA polymerase II elongation complex `2E2I`, ribosome subunits `1J5E` and `1JJ2`, tRNA `4TNA`, nucleosome `1AOI`, Cas9 `4UN3`, transcription factors `6ML2`, `6KKS`, `3TS8`, and `3G73`, RNA-binding proteins `1U04`, `1CVJ`, `4ED5`, `3Q0Q`, and `1ZDH`, mCherry/RFP tag `2H5Q`, and actin protein `1J6Z`.
 
 ## Canonical Workflow
 
-Run the complete V4 build from a PowerShell prompt:
+Run the complete V5 build from a PowerShell prompt:
 
 ```powershell
-.\scripts\run_canonical_v4_workflow.ps1
+.\scripts\run_canonical_v5_workflow.ps1
 ```
 
 For a quick rebuild that reuses already downloaded/exported/reduced assets:
 
 ```powershell
-.\scripts\run_canonical_v4_workflow.ps1 -SkipFetch -SkipPyMolExport -SkipReduction
+.\scripts\run_canonical_v5_workflow.ps1 -SkipFetch -SkipPyMolExport -SkipReduction
 ```
 
-Canonical V4 outputs are written to:
+Canonical V5 outputs are written to:
 
-- `outputs/canonical/gene_expression_surface_style_v4.blend`
-- `outputs/canonical/preview_gene_expression_surface_style_v4.png`
-- `outputs/canonical/gene_expression_surface_scene_v4_report.json`
+- `outputs/canonical/gene_expression_surface_style_v5.blend`
+- `outputs/canonical/preview_gene_expression_surface_style_v5.png`
+- `outputs/canonical/gene_expression_surface_scene_v5_report.json`
 
-V4 detail previews are also written beside the main preview:
+V5 detail previews are written beside the main preview:
 
-- `outputs/canonical/preview_gene_expression_surface_style_v4_full_overview.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v4_polymerase_rna_start.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v4_nucleosome_loop.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v4_mrna_spiral.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v4_ribosome_top_translation.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v4_compact_mrna.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_full_overview.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_polymerase_rna_start.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_nucleosome_loop.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_mrna_spiral.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_ribosome_top_translation.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_compact_mrna.png`
 
-Preserved V3 backup outputs remain at:
+The generated `outputs/` directory is ignored by Git. The images shown in this README are tracked, web-sized copies in `docs/images/`.
 
-- `outputs/canonical/gene_expression_surface_style_v3.blend`
-- `outputs/canonical/preview_gene_expression_surface_style_v3.png`
-- `outputs/canonical/gene_expression_surface_scene_v3_report.json`
+The V5 build uses:
 
-Detail previews are also written beside the main preview:
-
-- `outputs/canonical/preview_gene_expression_surface_style_v3_dna_transcription_detail.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v3_cas9_binding_detail.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v3_nucleosome_binding_detail.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v3_translation_detail.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v3_ribosome_detail.png`
-
-The canonical V4 build uses:
-
-- `config/scene_manifest_v4.json` for the versioned V4 scene manifest, derived from `config/scene_manifest.json`.
+- `config/scene_manifest_v5.json` for the versioned scene manifest, derived from `config/scene_manifest.json`.
 - `scripts/fetch_rcsb_assets.py` to fetch mmCIF files.
-- `scripts/export_pymol_surface_assets.py` to export PyMOL molecular surfaces for PDB-derived structures.
-- `scripts/reduce_surface_assets.py` to weld duplicate PyMOL OBJ vertices and decimate PDB-derived surfaces for Blender.
-- `scripts/blender_nucleic_meshes.py` to build scale-correct direct Blender DNA/RNA meshes with nucleotide-level detail.
-- `scripts/build_gene_expression_surface_scene_v4.py` to arrange the final V4 Blender scene.
+- `scripts/export_pymol_surface_assets.py` to export PyMOL molecular surfaces.
+- `scripts/reduce_surface_assets.py` to weld and decimate OBJ surfaces for Blender.
+- `scripts/blender_nucleic_meshes.py` to build scale-correct direct Blender DNA/RNA meshes.
+- `scripts/build_gene_expression_surface_scene_v5.py` to arrange and render the final scene.
 
-## Scene Style
+More workflow detail is in [docs/workflow.md](docs/workflow.md).
 
-The main scene uses PyMOL molecular surfaces for imported PDB-derived structures. DNA and mRNA are generated directly in Blender as scale-correct polished meshes, avoiding the procedural DNA/RNA PyMOL export path in the main scene builds. V4 uses the arrangement V2 full-gene layout: 3,454 bp ACTB canonical gene span plus a 500 bp upstream promoter, with mRNA rising from the RNA polymerase II/TSS point. A separate compact mRNP-like full-length actin mRNA remains as a secondary reference. DNA- and RNA-bound proteins are registered using their co-crystallized nucleic-acid geometry with strict guide-to-path contact validation.
+## 2017 Poster Context
 
-The DNA/RNA-only arrangement comparison is in `experiments/arrangement_variants`. It builds four full-scale direct Blender DNA/RNA panels in one `.blend` file so the base and upward RNA spiral can be chosen before protein attachment is revisited. Canonical DNA length notes are recorded in `docs/canonical_dna_scale_notes.md`.
+This repository builds on an earlier 2017 poster about gene expression control at molecular scale. The poster compared mRNA, protein products, regulatory proteins, membrane proteins, and structural cellular components using visual material from David S. Goodsell and RCSB PDB resources.
 
-Current canonical PDB assets include RNA polymerase II elongation complex `2E2I`, ribosome subunits `1J5E` and `1JJ2`, tRNA `4TNA`, nucleosome `1AOI`, Cas9 `4UN3`, Argonaute `1U04`, and p53 tetramer bound to DNA `3TS8`.
+![2017 gene expression scale poster](docs/images/poster-2017-gene-expression-scale.png)
+
+Original source note:
+
+> transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
+
+See [docs/references.md](docs/references.md) for source links, PDB IDs, and attribution details.
 
 ## Experiments
 
 Experiments are isolated under `experiments/`:
 
 - `experiments/style_trials/`: earlier surface/spheres/beads comparisons.
-- `experiments/molecular_nodes/`: earlier Molecular Nodes import/style trial.
+- `experiments/molecular_nodes/`: Molecular Nodes import/style trials.
+- `experiments/arrangement_variants/`: DNA/RNA-only layout comparisons.
+- `experiments/procedural_nucleic_acids/`: custom-vs-PyMOL-calibrator-vs-Molecular-Nodes DNA/RNA comparisons.
 - `experiments/archive_v1/`: older first-pass scene outputs.
-- `experiments/procedural_nucleic_acids/`: current custom-vs-PyMOL-calibrator-vs-Molecular-Nodes DNA/RNA comparison.
-
-The current nucleic-acid comparison can be refreshed with:
-
-```powershell
-python .\scripts\analyze_nucleic_calibrators.py
-$env:GENE_SCENE_ROOT=(Get-Location).Path; $env:PYMOL_CALIBRATOR_PDBS='1BNA,9IOB'; $env:PYMOL_CALIBRATOR_REPRESENTATIVE_CHAINS='1'; & "$env:LOCALAPPDATA\Schrodinger\PyMOL2\Scripts\pymol.exe" -cq -d "run scripts/export_pymol_nucleic_calibrator_surfaces.py"
-& "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" --background --python .\experiments\procedural_nucleic_acids\scripts\build_nucleic_acid_generation_comparison.py
-```
 
 Generated canonical raw/reduced PyMOL surface assets remain in `assets/pymol_exports/` because they are shared by the main workflow.
