@@ -16,11 +16,6 @@
     "preview": "outputs/canonical/preview_gene_expression_surface_style_v5.png",
     "report": "outputs/canonical/gene_expression_surface_scene_v5_report.json"
   },
-  "legacy_outputs": {
-    "blend": "experiments/archive_v1/outputs/gene_expression_at_scale.blend",
-    "preview": "experiments/archive_v1/outputs/preview_gene_expression_at_scale.png",
-    "report": "experiments/archive_v1/outputs/gene_expression_scene_report.json"
-  },
   "collections": [
     "DNA",
     "mRNA",
@@ -238,9 +233,9 @@
     "mrna": {
       "style": "direct_blender_surface_proxy_polished",
       "surface_vdw_A": 2.0,
-      "tube_radius_mm": 0.165,
-      "tube_sides": 12,
-      "surface_bump_amplitude": 0.1,
+      "tube_radius_mm": 0.15,
+      "tube_sides": 16,
+      "surface_bump_amplitude": 0.0,
       "base_lobe_radius_mm": 0.095,
       "base_lobe_every_nt": 1,
       "base_lobe_sides": 8,
@@ -271,8 +266,11 @@
       "compact_height_mm": 8.0,
       "compact_depth_mm": 3.4,
       "compact_seed": 304,
-      "path_mode": "arrangement_v1_polymerase_spiral",
-      "arrangement_v1": {
+      "path_mode": "canonical_polymerase_spiral",
+      "compact_position_mode": "between_mrna_end_and_actin",
+      "show_radial_nucleotide_detail": false,
+      "elongated_path_origin": "3_prime_at_polymerase_ii",
+      "canonical_spiral": {
         "start_mm": [
           28.117722241405147,
           18.13054368897545,
@@ -297,7 +295,25 @@
           0.0
         ]
       },
-      "compact_position_mode": "between_mrna_end_and_actin"
+      "surface_mode": "twisted_groove",
+      "compact_variant": "compact_rosette",
+      "stem_bridge_radius_mm": 0.032,
+      "secondary_structure": {
+        "model": "deterministic_schematic_stem_loop",
+        "sequence_resolved": false,
+        "elongated_stem_count": 0,
+        "compact_stem_count": 38,
+        "elongated_paired_fraction_target": 0.0,
+        "compact_paired_fraction_target": 0.58,
+        "stem_bp_min": 6,
+        "stem_bp_max": 18,
+        "hairpin_loop_nt_min": 4,
+        "hairpin_loop_nt_max": 12,
+        "a_form_bp_per_turn": 11.0,
+        "a_form_diameter_mm": 0.92,
+        "elongated_seed": 7103,
+        "compact_seed": 3838
+      }
     }
   },
   "nucleic_acid_calibrators": {
@@ -400,12 +416,12 @@
         "binding_mode": "co_crystal_dna_axis",
         "distance_mm": 68.0
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "RNA Pol II elongation\ncomplex (2E2I)"
+      "label_text": "RNA Pol II (2E2I)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Ribosome small subunit",
@@ -454,11 +470,11 @@
         1.0,
         0.0
       ],
-      "v4_contact_role": "mrna_bracket_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "30S ribosomal\nsubunit (1J5E)"
+      "label_text": "30S subunit (1J5E)",
+      "contact_role": "mrna_bracket_contact"
     },
     {
       "name": "Ribosome large subunit",
@@ -507,31 +523,31 @@
         -1.0,
         0.0
       ],
-      "v4_contact_role": "mrna_bracket_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "large ribosomal\nsubunit (1JJ2)"
+      "label_text": "large subunit (1JJ2)",
+      "contact_role": "mrna_bracket_contact"
     },
     {
       "name": "Standalone tRNA",
       "pdb_id": "4TNA",
       "collection": "Translation",
-      "role": "free tRNA near translating ribosome",
+      "role": "incoming tRNA displayed beside translating ribosome",
       "location_mm": [
         -4.0,
         55.0,
         3.0
       ],
       "label_offset_mm": [
-        2.4,
-        2.0,
-        0.35
+        3.2,
+        2.8,
+        0.45
       ],
       "rotation_deg": [
         0.0,
         0.0,
-        -20.0
+        -52.0
       ],
       "anchor_kind": "nucleic",
       "max_beads": 120,
@@ -541,7 +557,7 @@
       "source": "https://www.rcsb.org/structure/4TNA",
       "path_anchor": {
         "path": "mrna",
-        "fraction": 0.915,
+        "fraction": 0.9,
         "offset_mm": [
           0.0,
           0.0,
@@ -549,17 +565,23 @@
         ],
         "offset_local_mm": [
           0.0,
-          0.0,
+          10.5,
           0.0
         ],
-        "roll_deg": -20.0,
-        "binding_mode": "co_crystal_rna_axis"
+        "roll_deg": -52.0,
+        "binding_mode": "display_tRNA_side_view"
       },
-      "v4_contact_role": "mrna_strict_contact",
-      "strict_contact_required": true,
+      "strict_contact_required": false,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "yeast tRNA-Phe\n(4TNA)"
+      "label_text": "tRNA-Phe (4TNA)",
+      "contact_role": "display_exempt",
+      "display_plane_normal": [
+        -13.0,
+        -18.0,
+        15.0
+      ],
+      "display_roll_deg": 18.0
     },
     {
       "name": "Nucleosome",
@@ -604,12 +626,12 @@
         "roll_deg": 0.0,
         "binding_mode": "wrapped_nucleosome_loop"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "nucleosome core +\n146 bp DNA (1AOI)"
+      "label_text": "nucleosome (1AOI)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Cas9",
@@ -658,12 +680,12 @@
         "roll_deg": 24.0,
         "binding_mode": "co_crystal_dna_axis"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "Cas9-DNA\ncomplex (4UN3)"
+      "label_text": "Cas9-DNA (4UN3)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Actin protein",
@@ -690,20 +712,6 @@
       "protein_color": "protein_product_coral",
       "nucleic_color": "rna_red",
       "source": "https://www.rcsb.org/structure/1J6Z",
-      "arrangement_v2_positioning": {
-        "mode": "centered_above_rna_spiral",
-        "rna_top_mm": [
-          15.986013594298594,
-          -27.05791662070897,
-          82.05821629463172
-        ],
-        "center_xy_mm": [
-          14.94627595125148,
-          -32.565817653566086
-        ],
-        "vertical_offset_mm": 18.0
-      },
-      "v4_contact_role": "product_exempt",
       "strict_contact_required": false,
       "arrangement_v5_positioning": {
         "mode": "above_translation_end",
@@ -720,7 +728,21 @@
       },
       "v5_color_role": "highlighted_protein_product",
       "label_size_mm": 1.55,
-      "label_text": "actin protein\nproduct (1J6Z)"
+      "label_text": "actin (1J6Z)",
+      "contact_role": "product_exempt",
+      "canonical_positioning": {
+        "mode": "centered_above_rna_spiral",
+        "rna_top_mm": [
+          15.986013594298594,
+          -27.05791662070897,
+          82.05821629463172
+        ],
+        "center_xy_mm": [
+          14.94627595125148,
+          -32.565817653566086
+        ],
+        "vertical_offset_mm": 18.0
+      }
     },
     {
       "name": "Transcription factor 1",
@@ -769,12 +791,12 @@
         "roll_deg": -20.0,
         "binding_mode": "co_crystal_dna_axis"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "ZBTB24 zinc\nfingers + DNA (6ML2)"
+      "label_text": "ZBTB24 (6ML2)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Transcription factor 4",
@@ -823,12 +845,12 @@
         "roll_deg": 8.0,
         "binding_mode": "co_crystal_dna_axis"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "R2R3 MYB TF +\nDNA (6KKS)"
+      "label_text": "R2R3 MYB-DNA (6KKS)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "p53 tetramer bound to DNA",
@@ -877,12 +899,12 @@
         "roll_deg": 12.0,
         "binding_mode": "co_crystal_dna_axis"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "p53 tetramer +\nDNA (3TS8)"
+      "label_text": "p53-DNA (3TS8)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Transcription factor 3",
@@ -931,12 +953,12 @@
         "roll_deg": -5.0,
         "binding_mode": "co_crystal_dna_axis"
       },
-      "v4_contact_role": "dna_strict_contact",
       "strict_contact_required": true,
       "v5_contact_role": "dna_strict_contact",
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "FOXM1 DNA-binding\ndomain (3G73)"
+      "label_text": "FOXM1-DBD (3G73)",
+      "contact_role": "dna_strict_contact"
     },
     {
       "name": "Argonaute",
@@ -990,11 +1012,11 @@
         1.0,
         0.0
       ],
-      "v4_contact_role": "mrna_strict_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "Argonaute\n(1U04)"
+      "label_text": "Argonaute (1U04)",
+      "contact_role": "mrna_strict_contact"
     },
     {
       "name": "Poly(A)-binding RBP",
@@ -1044,11 +1066,11 @@
         "binding_mode": "co_crystal_rna_axis"
       },
       "hide_alignment_nucleic": true,
-      "v4_contact_role": "mrna_strict_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "poly(A)-binding\nprotein + RNA (1CVJ)"
+      "label_text": "PABP-RNA (1CVJ)",
+      "contact_role": "mrna_strict_contact"
     },
     {
       "name": "HuR-like RBP",
@@ -1098,11 +1120,11 @@
         "binding_mode": "co_crystal_rna_axis"
       },
       "hide_alignment_nucleic": true,
-      "v4_contact_role": "mrna_strict_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "HuR RRM domains\n+ RNA (4ED5)"
+      "label_text": "HuR-RNA (4ED5)",
+      "contact_role": "mrna_strict_contact"
     },
     {
       "name": "Pumilio RBP",
@@ -1152,11 +1174,11 @@
         "binding_mode": "co_crystal_rna_axis"
       },
       "hide_alignment_nucleic": true,
-      "v4_contact_role": "mrna_strict_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "Pumilio2 RNA-\nbinding domain (3Q0Q)"
+      "label_text": "PUM2-RNA (3Q0Q)",
+      "contact_role": "mrna_strict_contact"
     },
     {
       "name": "MS2 coat protein MCP",
@@ -1191,7 +1213,7 @@
       "source": "https://www.rcsb.org/structure/1ZDH",
       "path_anchor": {
         "path": "mrna",
-        "fraction": 0.34,
+        "fraction": 0.29,
         "offset_mm": [
           0.0,
           0.0,
@@ -1206,11 +1228,11 @@
         "binding_mode": "co_crystal_rna_axis"
       },
       "hide_alignment_nucleic": true,
-      "v4_contact_role": "mrna_strict_contact",
       "strict_contact_required": true,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "MS2 coat protein\n+ RNA (1ZDH)"
+      "label_text": "MS2-RNA (1ZDH)",
+      "contact_role": "mrna_strict_contact"
     },
     {
       "name": "mCherry/RFP tag",
@@ -1253,11 +1275,11 @@
         "roll_deg": -18.0,
         "binding_mode": "display_tag_near_mrna"
       },
-      "v4_contact_role": "display_exempt",
       "strict_contact_required": false,
       "v5_color_role": "uniform_context_protein",
       "label_size_mm": 1.55,
-      "label_text": "mCherry/RFP tag\n(2H5Q)"
+      "label_text": "mCherry (2H5Q)",
+      "contact_role": "display_exempt"
     }
   ],
   "reference_links": [
@@ -1272,11 +1294,11 @@
   ],
   "canonical_version": "v5",
   "layout_intent": {
-    "source_layout": "canonical_v4_contact_layout",
+    "source_layout": "standalone_canonical_v5",
     "dna": "full ACTB promoter-plus-gene span in reader order from top-left toward bottom-right",
     "mrna": "full-length actin mRNA starts at the V5 Pol II/TSS point and keeps the elongated spiral",
-    "contact_policy": "V4 strict co-crystal/contact validation retained; V5 reclusters DNA binders near the gene start",
-    "compact_reference": "compact full-length mRNP-like mRNA is dynamically placed between the elongated mRNA end and actin",
+    "contact_policy": "strict co-crystal/contact validation for all current canonical DNA/RNA binders",
+    "compact_reference": "RNA-only compact rosette with deterministic schematic paired stems",
     "wire_policy": "editable source curves are kept for rebaking but hidden in viewport and render"
   }
 }

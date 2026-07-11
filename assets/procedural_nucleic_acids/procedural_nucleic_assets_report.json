@@ -7,7 +7,7 @@
     {
       "id": "DNA_PROXY",
       "path": "assets/procedural_nucleic_acids/cif/DNA_PROXY.cif",
-      "atom_count": 60815,
+      "atom_count": 81715,
       "components": {
         "strand_A": "chain A",
         "strand_B": "chain B",
@@ -15,6 +15,7 @@
       },
       "geometry": {
         "style": "procedural_pymol_surface_proxy_repaired",
+        "path_mode": "default_scene_dna",
         "handedness": "right_handed",
         "theta_sign": -1,
         "axis_length_mm": 258.3432570566669,
@@ -22,11 +23,11 @@
         "bp_spacing_mm": 0.136,
         "pitch_bp": 10.5,
         "strand_center_radius_mm": 0.314,
-        "strand_radius_mm": 0.086,
-        "surface_vdw_A": 2.15,
+        "strand_radius_mm": 0.12,
+        "surface_vdw_A": null,
         "target_envelope_diameter_mm": 0.8,
-        "estimated_envelope_diameter_mm": 0.8,
-        "strand_a_length_mm": 437.2179635210249,
+        "estimated_envelope_diameter_mm": 0.868,
+        "strand_a_length_mm": 437.230447337777,
         "base_atoms_per_pair": 11,
         "nucleosome_loop": {
           "enabled": true,
@@ -121,14 +122,19 @@
               0.0,
               1.0
             ]
-          ]
+          ],
+          "computed_from_arrangement_path": false,
+          "arrangement_path_fraction": null,
+          "arrangement_path_distance_mm": null,
+          "entry_bridge_mm": 6.0,
+          "exit_bridge_mm": 6.0
         },
         "strand_connectors_per_bp_step": 2,
-        "base_stack_connectors_per_bp_step": 1,
-        "original_max_strand_center_spacing_A": 14.201419987539335,
-        "repaired_max_strand_center_spacing_A": 4.733806662513219,
-        "original_max_base_stack_spacing_A": 11.748806681989622,
-        "repaired_max_base_stack_spacing_A": 5.874403340994811,
+        "base_stack_connectors_per_bp_step": 2,
+        "original_max_strand_center_spacing_A": 13.915982153510065,
+        "repaired_max_strand_center_spacing_A": 4.6386607178366885,
+        "original_max_base_stack_spacing_A": 11.660990485537441,
+        "repaired_max_base_stack_spacing_A": 3.8869968285124803,
         "surface_export_vdw_A": 2.4
       }
     },
@@ -183,7 +189,7 @@
         },
         "marker_interval_nt": 50,
         "surface_vdw_A": 2.0,
-        "base_offset_mm": 0.16,
+        "base_offset_mm": 0.17,
         "backbone_connectors_per_nt_step": 2,
         "sugar_connectors_per_nt_step": 1,
         "surface_export_vdw_A": 2.2
@@ -200,51 +206,135 @@
       },
       "geometry": {
         "style": "procedural_pymol_surface_proxy_repaired",
-        "path_generator": "continuous_mRNP_rosette_hairpin_globule",
+        "path_generator": "continuous_rna_with_explicit_antiparallel_stems_hairpins_and_junctions",
         "segments": [
           {
             "name": "5' UTR",
-            "original_max_backbone_spacing_A": 2.999753178748923,
-            "repaired_max_backbone_spacing_A": 0.9999177262496476
+            "original_max_backbone_spacing_A": 3.0000000000003264,
+            "repaired_max_backbone_spacing_A": 1.0000000000002351
           },
           {
             "name": "coding sequence",
-            "original_max_backbone_spacing_A": 2.999772281635861,
-            "repaired_max_backbone_spacing_A": 0.9999240938788626
+            "original_max_backbone_spacing_A": 3.0000000000016502,
+            "repaired_max_backbone_spacing_A": 1.0000000000006934
           },
           {
             "name": "3' UTR",
-            "original_max_backbone_spacing_A": 2.999763572917891,
-            "repaired_max_backbone_spacing_A": 0.9999211909728738
+            "original_max_backbone_spacing_A": 3.0000000000017932,
+            "repaired_max_backbone_spacing_A": 1.0000000000007858
           }
         ],
-        "total_measured_mm": 222.2382571167487,
-        "total_end_to_end_mm": 0.9535105185540814,
-        "contour_to_max_extent_ratio": 28.07497862910017,
+        "total_measured_mm": 222.06789715242965,
+        "total_end_to_end_mm": 0.8199856422824942,
+        "contour_to_max_extent_ratio": 27.675039956598877,
         "bbox": {
           "min_mm": [
-            62.23004476202642,
-            40.00468622029118,
-            -1.7772992611179195
+            62.15029197182404,
+            39.186919286518176,
+            -1.4569984071206643
           ],
           "max_mm": [
-            70.1459281560175,
-            46.11002081804243,
-            1.7382098707032712
+            70.17441397853787,
+            45.61848184221676,
+            1.742508167255979
           ],
           "bbox_mm": [
-            7.915883393991088,
-            6.105334597751252,
-            3.5155091318211906
+            8.024122006713831,
+            6.431562555698584,
+            3.1995065743766435
           ]
         },
         "marker_interval_nt": 50,
         "surface_vdw_A": 2.0,
-        "base_offset_mm": 0.16,
+        "base_offset_mm": 0.17,
+        "secondary_structure": {
+          "model": "deterministic_schematic_stem_loop",
+          "sequence_resolved": false,
+          "compact": true,
+          "seed": 51852,
+          "total_nt": 1852,
+          "target_length_mm": 222.23999999999998,
+          "measured_length_mm": 222.24000000000004,
+          "length_error_mm": 5.684341886080802e-14,
+          "stem_count": 40,
+          "hairpin_loop_count": 40,
+          "junction_count": 5,
+          "stem_bp": [
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14,
+            13,
+            14,
+            14,
+            13,
+            14,
+            14,
+            14,
+            14,
+            14,
+            13,
+            14,
+            14,
+            14,
+            13,
+            14,
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "paired_nt": 1112,
+          "paired_fraction": 0.6004319654427646,
+          "loop_nt": 300,
+          "linker_nt": 440,
+          "allocation_check_nt": 1852,
+          "base_pair_bridge_count": 556,
+          "a_form_bp_per_turn": 11.0,
+          "a_form_diameter_mm": 0.92,
+          "uniform_length_scale": 0.85996496769218,
+          "bbox": {
+            "min_mm": [
+              62.150241160084114,
+              39.18688790219172,
+              -1.4570090322709686
+            ],
+            "max_mm": [
+              70.17441462443415,
+              45.618501907044035,
+              1.7425559337416743
+            ],
+            "bbox_mm": [
+              8.024173464350035,
+              6.431614004852314,
+              3.199564966012643
+            ]
+          },
+          "sampled_self_clearance_mm": 0.03815737329350548,
+          "biological_intent": "secondary-structure-rich compact RNA schematic"
+        },
         "model_basis": {
-          "biological_intent": "schematic compact mRNP-like fold with many local hairpin/rosette turns",
+          "biological_intent": "schematic compact secondary-structure-rich RNA with many paired stems and hairpin loops",
           "not_sequence_specific": true,
-          "translation_state": "compact non-translating or storage/stress-associated mRNP, for visual contrast with elongated mRNA"
+          "rna_only": true,
+          "translation_state": "compact non-translating or storage-associated RNA reference"
         },
         "backbone_connectors_per_nt_step": 2,
         "sugar_connectors_per_nt_step": 1,

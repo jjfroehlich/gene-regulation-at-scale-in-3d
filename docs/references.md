@@ -2,7 +2,7 @@
 
 ## 2017 Poster Note
 
-The untracked root JPGs are local copies of an earlier poster. The GitHub README uses the tracked web copy at `docs/images/poster-2017-gene-expression-scale.png`.
+The GitHub README uses the tracked web copy at `docs/images/poster-2017-gene-expression-scale.png`.
 
 Original note:
 
@@ -13,6 +13,8 @@ Original note:
 - [RCSB PDB](https://www.rcsb.org/) for structure data and PDB entry pages.
 - [PDB-101 Molecular Machinery](https://mm.rcsb.org/) for the earlier scale-comparison inspiration and molecular-machine visual reference.
 - [BioNumbers: Which is bigger, mRNA or the protein it codes for?](https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/) for the actin mRNA/protein scale comparison idea.
+- [NCBI RefSeq NM_001101.5](https://www.ncbi.nlm.nih.gov/nuccore/NM_001101.5) for the 1,852 nt human ACTB mRNA reference.
+- [Rouskin et al., Nature 2014](https://www.nature.com/articles/nature12894) for experimental evidence that cellular mRNAs contain extensive but dynamic secondary structure; this will inform future RNA-folding experiments rather than the restored canonical RNA path.
 - [PDB-101 Molecule of the Month 181](https://pdb101.rcsb.org/motm/181).
 - [PDB-101 Molecule of the Month 98](https://pdb101.rcsb.org/motm/98).
 - [PDB-101 Molecule of the Month 112](https://pdb101.rcsb.org/motm/112).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download RCSB mmCIF assets and the optional Blender MCP add-on."""
+"""Download RCSB mmCIF assets used by canonical or retained experiments."""
 
 from __future__ import annotations
 
@@ -52,13 +52,21 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Redownload existing files.")
     parser.add_argument("--skip-mcp", action="store_true", help="Skip Blender MCP add-on download.")
+    parser.add_argument(
+        "--pdb-id",
+        action="append",
+        default=[],
+        help="Download only the specified PDB ID; repeat for multiple calibrators.",
+    )
     args = parser.parse_args()
 
     manifest = load_manifest()
-    pdb_ids = {asset["pdb_id"].upper() for asset in manifest["pdb_assets"]}
-    for group in manifest.get("nucleic_acid_calibrators", {}).values():
-        for asset in group:
-            pdb_ids.add(asset["pdb_id"].upper())
+    pdb_ids = {pdb_id.upper() for pdb_id in args.pdb_id}
+    if not pdb_ids:
+        pdb_ids = {asset["pdb_id"].upper() for asset in manifest["pdb_assets"]}
+        for group in manifest.get("nucleic_acid_calibrators", {}).values():
+            for asset in group:
+                pdb_ids.add(asset["pdb_id"].upper())
     pdb_ids = sorted(pdb_ids)
     records = []
     errors = []
@@ -70,7 +78,7 @@ def main() -> int:
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
             errors.append({"pdb_id": pdb_id, "url": url, "error": str(exc)})
 
-    if not args.skip_mcp:
+    if not args.skip_mcp and not args.pdb_id:
         try:
             records.append(download(MCP_ADDON_URL, MCP_DIR / "addon.py", force=args.force))
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:

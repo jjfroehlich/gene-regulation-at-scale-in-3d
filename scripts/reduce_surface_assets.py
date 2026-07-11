@@ -220,8 +220,17 @@ def main() -> None:
     existing_skipped = []
     if requested is not None and REPORT_PATH.exists():
         existing = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-        existing_entries = [entry for entry in existing.get("entries", []) if entry.get("pdb_id") not in requested]
-        existing_skipped = [entry for entry in existing.get("skipped", []) if entry.get("pdb_id") not in requested]
+        existing_entries = [
+            entry
+            for entry in existing.get("entries", [])
+            if entry.get("pdb_id") not in requested
+            and (ROOT / entry.get("reduced_obj", "")).is_file()
+        ]
+        existing_skipped = [
+            entry
+            for entry in existing.get("skipped", [])
+            if entry.get("pdb_id") not in requested and (ROOT / entry.get("raw_obj", "")).is_file()
+        ]
 
     entries = []
     skipped = []

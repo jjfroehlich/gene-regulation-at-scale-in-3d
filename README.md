@@ -8,21 +8,30 @@ The scene follows an ACTB promoter-plus-gene DNA path, a full-length actin mRNA 
 
 ## Render Gallery
 
-| Canonical overview | Transcription start |
-| --- | --- |
-| ![Full canonical V5 overview](docs/images/v5-overview.jpg) | ![RNA polymerase II and nascent RNA detail](docs/images/v5-transcription-start.jpg) |
+![Canonical V5 overview](docs/images/v5-overview.jpg)
 
-| Nucleosome loop | Translation and compact mRNA |
+| p53 tetramer with DNA | Nucleosome loop |
 | --- | --- |
-| ![Nucleosome loop detail](docs/images/v5-nucleosome-loop.jpg) | ![Ribosome, actin product, and compact mRNA reference](docs/images/v5-translation.jpg) |
+| ![Full p53 tetramer bound to DNA](docs/images/v5-p53-dna.jpg) | ![Nucleosome core with wrapped DNA](docs/images/v5-nucleosome-loop.jpg) |
 
-![Compact mRNP-like full-length mRNA reference](docs/images/v5-compact-mrna.jpg)
+| RNA polymerase II | Ribosome and tRNA |
+| --- | --- |
+| ![RNA polymerase II with nascent RNA](docs/images/v5-transcription-start.jpg) | ![Ribosome with tRNA](docs/images/v5-translation.jpg) |
+
+![ACTB protein product](docs/images/v5-actin.jpg)
+
+## Flythrough Animation
+
+![V5 educational flythrough animation preview](docs/images/v5-flythrough-preview.gif)
+
+The separate [V5 flythrough animation experiment](experiments/v5_flythrough_animation/README.md) exports a cinematic camera flight with longer paused molecule views, depth-of-field close-ups, subtle atmosphere, compositor glow/color grading, animated surface color/light pulses, top-down scale overview, ACTB DNA and transcription-factor close-up, RNA polymerase II, full mRNA zoom-out, ribosome/tRNA, compact mRNA reference, and final actin protein endpoint. The MP4 output is generated locally under the ignored experiment `outputs/` directory, while this README keeps a small tracked GIF preview.
 
 ## What It Builds
 
 - Full ACTB promoter-plus-gene DNA path: `3,454 bp` canonical ACTB span plus `500 bp` upstream promoter, for `3,954 bp` total.
 - Full-length actin mRNA: `1,852 nt`, split into `5' UTR`, coding sequence, and `3' UTR` segments.
-- Direct Blender DNA/RNA surface proxies with base-level detail and a shared physical scale.
+- Scale-accurate direct-Blender RNA using the canonical conical centerline with the smooth `surface_twisted_groove` envelope, plus the RNA-only `compact_rosette` reference with 38 schematic paired stems.
+- Direct Blender DNA/RNA surface proxies at one shared physical scale.
 - Reduced PyMOL molecular surfaces for PDB-derived proteins and nucleoprotein complexes.
 - Strict guide-to-path contact validation for DNA- and RNA-bound proteins.
 
@@ -51,11 +60,11 @@ Canonical V5 outputs are written to:
 V5 detail previews are written beside the main preview:
 
 - `outputs/canonical/preview_gene_expression_surface_style_v5_full_overview.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_p53_dna.png`
 - `outputs/canonical/preview_gene_expression_surface_style_v5_polymerase_rna_start.png`
 - `outputs/canonical/preview_gene_expression_surface_style_v5_nucleosome_loop.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v5_mrna_spiral.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v5_ribosome_top_translation.png`
-- `outputs/canonical/preview_gene_expression_surface_style_v5_compact_mrna.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_ribosome_trna.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_actin_product.png`
 
 The generated `outputs/` directory is ignored by Git. The images shown in this README are tracked, web-sized copies in `docs/images/`.
 
@@ -86,10 +95,9 @@ See [docs/references.md](docs/references.md) for source links, PDB IDs, and attr
 
 Experiments are isolated under `experiments/`:
 
-- `experiments/style_trials/`: earlier surface/spheres/beads comparisons.
-- `experiments/molecular_nodes/`: Molecular Nodes import/style trials.
 - `experiments/arrangement_variants/`: DNA/RNA-only layout comparisons.
 - `experiments/procedural_nucleic_acids/`: custom-vs-PyMOL-calibrator-vs-Molecular-Nodes DNA/RNA comparisons.
-- `experiments/archive_v1/`: older first-pass scene outputs.
+- `experiments/rna_structure_variants/`: scale-accurate elongated and compact RNA folding candidates with explicit stems and base pairing.
+- `experiments/v5_flythrough_animation/`: educational camera flight and README GIF preview.
 
 Generated canonical raw/reduced PyMOL surface assets remain in `assets/pymol_exports/` because they are shared by the main workflow.

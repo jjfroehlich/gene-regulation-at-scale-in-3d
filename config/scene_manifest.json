@@ -10,14 +10,9 @@
     "mrna_nt_to_mm": 0.12
   },
   "outputs": {
-    "blend": "outputs/canonical/gene_expression_surface_style_v3.blend",
-    "preview": "outputs/canonical/preview_gene_expression_surface_style_v3.png",
-    "report": "outputs/canonical/gene_expression_surface_scene_v3_report.json"
-  },
-  "legacy_outputs": {
-    "blend": "experiments/archive_v1/outputs/gene_expression_at_scale.blend",
-    "preview": "experiments/archive_v1/outputs/preview_gene_expression_at_scale.png",
-    "report": "experiments/archive_v1/outputs/gene_expression_scene_report.json"
+    "blend": "outputs/canonical/gene_expression_surface_style_v5.blend",
+    "preview": "outputs/canonical/preview_gene_expression_surface_style_v5.png",
+    "report": "outputs/canonical/gene_expression_surface_scene_v5_report.json"
   },
   "collections": [
     "DNA",

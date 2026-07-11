@@ -6,6 +6,8 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,9 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import blender_nucleic_meshes as direct_nucleic_meshes  # noqa: E402
-import build_gene_expression_scene as base  # noqa: E402
-import build_gene_expression_surface_scene as scene  # noqa: E402
-import build_gene_expression_surface_scene_v4 as v4_builder  # noqa: E402
+import scene_core as base  # noqa: E402
+import surface_assets as scene  # noqa: E402
+import contact_validation as contact_helpers  # noqa: E402
 import canonical_v5_config as v5  # noqa: E402
 import procedural_nucleic_geometry as nucleic_geometry  # noqa: E402
 
@@ -30,11 +32,11 @@ PREVIEW_PATH = v5.PREVIEW_PATH
 REPORT_PATH = v5.REPORT_PATH
 DETAIL_PREVIEWS = {
     "full_overview": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_full_overview.png",
+    "p53_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_p53_dna.png",
     "polymerase_rna_start": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_polymerase_rna_start.png",
     "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_nucleosome_loop.png",
-    "mrna_spiral": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_mrna_spiral.png",
-    "ribosome_top_translation": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_ribosome_top_translation.png",
-    "compact_mrna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_compact_mrna.png",
+    "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_ribosome_trna.png",
+    "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_actin_product.png",
 }
 PROTEIN_AA_CONTOUR_NM = v5.PROTEIN_AA_CONTOUR_NM
 NANOMETER_SCALE_BAR_NM = 10.0
@@ -82,8 +84,6 @@ V5_BACKDROP_BOTTOM_RIGHT = (1.0, 0.885, 0.74, 1.0)
 V5_LABEL_MATERIALS = {"black", "label_grey", "scale_grey"}
 V5_CYCLES_SAMPLES = 64
 OVERVIEW_LABEL_POSITIONS = {
-    "label_scene_scale": (0.17, 0.50),
-    "label_DNA_v5": (0.38, 0.34),
     "label_Transcription factor 4": (0.36, 0.39),
     "label_Cas9": (0.46, 0.38),
     "label_Transcription factor 1": (0.48, 0.45),
@@ -92,7 +92,6 @@ OVERVIEW_LABEL_POSITIONS = {
     "label_p53 tetramer bound to DNA": (0.61, 0.48),
     "label_Pumilio RBP": (0.52, 0.50),
     "label_RNA polymerase II elongation complex": (0.66, 0.33),
-    "label_mRNA_v5": (0.70, 0.46),
     "label_Nucleosome": (0.77, 0.50),
     "label_Transcription factor 3": (0.79, 0.44),
     "label_Argonaute": (0.73, 0.55),
@@ -101,8 +100,19 @@ OVERVIEW_LABEL_POSITIONS = {
     "label_Ribosome large subunit": (0.64, 0.73),
     "label_Ribosome small subunit": (0.71, 0.73),
     "label_Standalone tRNA": (0.78, 0.71),
-    "label_compact_mrna_v5": (0.72, 0.86),
-    "label_Actin protein": (0.69, 0.92),
+}
+PRIMARY_CALLOUTS = {
+    "label_DNA_v5": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.825, 0.29), "span": (0.16, 0.42)},
+    "label_mRNA_v5": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
+    "label_ACTB_primary_v5": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
+}
+COMPACT_CALLOUT = {"object": "label_compact_mrna_v5", "text": "mRNA compact", "offset": (0.025, 0.018)}
+DETAIL_TITLES = {
+    "p53_dna": "p53 tetramer + DNA (3TS8)",
+    "nucleosome_loop": "nucleosome core + wrapped DNA (1AOI)",
+    "polymerase_rna_start": "RNA polymerase II + nascent RNA (2E2I)",
+    "ribosome_trna": "ribosome + tRNA",
+    "actin_product": "ACTB protein (1J6Z)",
 }
 
 
@@ -132,7 +142,7 @@ def build_v5_dna(manifest: dict, collections: dict, materials: dict) -> dict:
     start = path.points[0]
     base.create_text(
         "label_DNA_v5",
-        "ACTB promoter + gene DNA\n3954 bp",
+        "Actb promoter + gene DNA 3954 bp",
         (start.x + 4.0, start.y - 3.0, start.z + 0.25),
         1.55,
         materials["black"],
@@ -147,7 +157,7 @@ def build_v5_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
     start = path.points[0]
     base.create_text(
         "label_mRNA_v5",
-        "actin mRNA\n1852 nt",
+        "Actb mRNA 1852 nt",
         (start.x + 3.0, start.y + 3.0, start.z + 0.3),
         1.55,
         materials["black"],
@@ -172,12 +182,28 @@ def compact_positioned_manifest(manifest: dict, mrna_path) -> tuple[dict, dict]:
     }
 
 
+def place_actin_from_mrna_endpoint(manifest: dict, mrna_path) -> dict:
+    endpoint = Vector((mrna_path.points[-1].x, mrna_path.points[-1].y, mrna_path.points[-1].z))
+    offset = Vector((-6.4, 0.6, 27.0))
+    location = endpoint + offset
+    actin = v5.asset_by_name(manifest, "Actin protein")
+    actin.pop("path_anchor", None)
+    actin["location_mm"] = [location.x, location.y, location.z]
+    actin["label_text"] = "actin (1J6Z)"
+    return {
+        "mode": "above_current_structured_mrna_endpoint",
+        "mrna_end_mm": [endpoint.x, endpoint.y, endpoint.z],
+        "offset_mm": [offset.x, offset.y, offset.z],
+        "actin_location_mm": [location.x, location.y, location.z],
+    }
+
+
 def build_v5_compact_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
     path, report = direct_nucleic_meshes.build_compact_mrna_meshes(manifest, collections, materials)
-    compact_center = v4_builder.path_center(path)
+    compact_center = contact_helpers.path_center(path)
     base.create_text(
         "label_compact_mrna_v5",
-        "compact mRNP-like\nmRNA reference",
+        "mRNA compact",
         (compact_center.x, compact_center.y + 3.2, compact_center.z + 0.35),
         1.45,
         materials["label_grey"],
@@ -264,7 +290,7 @@ def add_v5_scale_bars(manifest: dict, collections: dict, materials: dict) -> dic
 
 
 def create_camera(name: str, location: tuple[float, float, float], target: Vector, ortho_scale: float) -> str:
-    return v4_builder.create_camera(name, location, target, ortho_scale)
+    return contact_helpers.create_camera(name, location, target, ortho_scale)
 
 
 def set_bsdf_input(bsdf, names: tuple[str, ...], value) -> None:
@@ -727,19 +753,20 @@ def renderable_object_corners(obj: bpy.types.Object) -> list[Vector]:
     return [obj.matrix_world.translation]
 
 
-def orient_labels_to_camera(camera_name: str) -> dict:
+def orient_labels_to_camera(camera_name: str, *, reveal: bool = True) -> dict:
     camera = bpy.data.objects[camera_name]
     rows = []
     for obj in bpy.data.objects:
         if obj.type != "FONT":
             continue
-        obj.hide_render = False
+        if reveal:
+            obj.hide_render = False
         obj.rotation_euler = camera.rotation_euler
         obj["oriented_to_camera"] = camera_name
         rows.append({"object": obj.name, "text": obj.data.body})
     bpy.context.view_layer.update()
     return {
-        "policy": "all V5 text labels are visible and billboarded to the full-overview camera",
+        "policy": "V5 text labels are billboarded to the active camera",
         "camera": camera_name,
         "oriented_label_count": len(rows),
         "rows": rows,
@@ -768,6 +795,10 @@ def fit_camera_to_renderables(camera_name: str, margin_fraction: float = 0.075) 
     else:
         required_ortho = max(width / aspect, height)
     camera.data.ortho_scale = required_ortho / usable
+    if camera_name == "Camera_v5_full_overview":
+        camera.data.ortho_scale *= 1.08
+        gutter_shift = camera.matrix_world.to_3x3() @ Vector((float(camera.data.ortho_scale) * 0.065, 0.0, 0.0))
+        camera.location += gutter_shift
     bpy.context.view_layer.update()
     return {
         "camera": camera_name,
@@ -792,44 +823,329 @@ def fit_camera_to_renderables(camera_name: str, margin_fraction: float = 0.075) 
     }
 
 
-def place_overview_labels(camera_name: str) -> dict:
-    camera = bpy.data.objects[camera_name]
+def _camera_overlay_point(camera: bpy.types.Object, x_norm: float, y_norm: float, z_local: float = -1.0) -> Vector:
     scene_render = bpy.context.scene.render
     aspect = scene_render.resolution_x / max(float(scene_render.resolution_y), 1.0)
+    if aspect >= 1.0:
+        local = Vector(
+            (
+                (x_norm - 0.5) * float(camera.data.ortho_scale),
+                (y_norm - 0.5) * float(camera.data.ortho_scale) / aspect,
+                z_local,
+            )
+        )
+    else:
+        local = Vector(
+            (
+                (x_norm - 0.5) * float(camera.data.ortho_scale) * aspect,
+                (y_norm - 0.5) * float(camera.data.ortho_scale),
+                z_local,
+            )
+        )
+    return camera.matrix_world @ local
+
+
+def _remove_annotation_guides() -> None:
+    for obj in list(bpy.data.objects):
+        if obj.get("v5_annotation_leader") or obj.get("v5_annotation_bracket") or obj.get("v5_label_backing"):
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def _projected_object_bounds(camera: bpy.types.Object, label: bpy.types.Object) -> tuple[float, float, float, float]:
+    inv = camera.matrix_world.inverted()
+    view_width, view_height = camera_view_dimensions(camera)
+    points = []
+    pdb_id = label.get("pdb_id")
+    for obj in bpy.data.objects:
+        if obj.type != "MESH" or not pdb_id or obj.get("pdb_id") != pdb_id:
+            continue
+        points.extend(obj.matrix_world @ Vector(corner) for corner in obj.bound_box)
+    if not points:
+        anchor = Vector(label.get("molecule_anchor_mm", label.location))
+        points = [anchor]
+    normalized = []
+    for point in points:
+        local = inv @ point
+        normalized.append((local.x / view_width + 0.5, local.y / view_height + 0.5))
+    return (
+        min(point[0] for point in normalized), max(point[0] for point in normalized),
+        min(point[1] for point in normalized), max(point[1] for point in normalized),
+    )
+
+
+def _boxes_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float], pad: float = 0.006) -> bool:
+    return not (a[1] + pad < b[0] or b[1] + pad < a[0] or a[3] + pad < b[2] or b[3] + pad < a[2])
+
+
+def _label_box(center: tuple[float, float], width: float, height: float) -> tuple[float, float, float, float]:
+    return (center[0] - width * 0.5, center[0] + width * 0.5, center[1] - height * 0.5, center[1] + height * 0.5)
+
+
+def _ensure_label_backing_material(materials: dict) -> bpy.types.Material:
+    if "label_backing" in materials:
+        return materials["label_backing"]
+    mat = bpy.data.materials.new("label_backing")
+    color = (0.975, 0.982, 0.985, 0.72)
+    mat.diffuse_color = color
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = 0.92
+        if "Alpha" in bsdf.inputs:
+            bsdf.inputs["Alpha"].default_value = color[3]
+    if hasattr(mat, "surface_render_method"):
+        mat.surface_render_method = "DITHERED"
+    materials["label_backing"] = mat
+    return mat
+
+
+def _create_label_backing(name: str, camera: bpy.types.Object, box, collections: dict, materials: dict) -> str:
+    left, right, bottom, top = box
+    margin_x, margin_y = 0.0025, 0.002
+    corners = [
+        _camera_overlay_point(camera, left - margin_x, bottom - margin_y, -1.08),
+        _camera_overlay_point(camera, right + margin_x, bottom - margin_y, -1.08),
+        _camera_overlay_point(camera, right + margin_x, top + margin_y, -1.08),
+        _camera_overlay_point(camera, left - margin_x, top + margin_y, -1.08),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata([tuple(point) for point in corners], [], [(0, 1, 2, 3)])
+    obj = bpy.data.objects.new(name, mesh)
+    collections["Labels"].objects.link(obj)
+    obj.data.materials.append(_ensure_label_backing_material(materials))
+    obj["v5_label_backing"] = True
+    return obj.name
+
+
+def _create_group_bracket(
+    name: str,
+    camera: bpy.types.Object,
+    span: tuple[float, float],
+    collections: dict,
+    materials: dict,
+) -> str:
+    bracket_x = 0.805
+    tick = 0.018
+    bottom, top = span
+    points = [
+        _camera_overlay_point(camera, bracket_x - tick, top),
+        _camera_overlay_point(camera, bracket_x, top),
+        _camera_overlay_point(camera, bracket_x, bottom),
+        _camera_overlay_point(camera, bracket_x - tick, bottom),
+    ]
+    bracket = base.create_curve(
+        name,
+        [(point.x, point.y, point.z) for point in points],
+        0.060,
+        materials["label_grey"],
+        collections["Labels"],
+        resolution=1,
+    )
+    bracket["v5_annotation_bracket"] = True
+    return bracket.name
+
+
+def place_overview_labels(camera_name: str, collections: dict, materials: dict) -> dict:
+    camera = bpy.data.objects[camera_name]
     inv = camera.matrix_world.inverted()
     rows = []
-    for object_name, (x_norm, y_norm) in OVERVIEW_LABEL_POSITIONS.items():
+    _remove_annotation_guides()
+    if bpy.data.objects.get("label_ACTB_primary_v5") is None:
+        primary = base.create_text(
+            "label_ACTB_primary_v5", "ACTB protein 375 aa", (0.0, 0.0, 0.0), 1.55,
+            materials["black"], collections["Labels"], align="LEFT"
+        )
+        primary.rotation_euler = camera.rotation_euler
+
+    priority_labels = {
+        "label_mCherry/RFP tag": 0,
+        "label_Ribosome small subunit": 0,
+        "label_Ribosome large subunit": 0,
+    }
+    labels = sorted(
+        [obj for obj in bpy.data.objects if obj.type == "FONT" and obj.get("pdb_id")],
+        key=lambda obj: (priority_labels.get(obj.name, 1), -_projected_object_bounds(camera, obj)[3]),
+    )
+    molecule_boxes = {obj.name: _projected_object_bounds(camera, obj) for obj in labels}
+    occupied = []
+    for obj in labels:
+        molecule_box = molecule_boxes[obj.name]
+        anchor_norm = ((molecule_box[0] + molecule_box[1]) * 0.5, (molecule_box[2] + molecule_box[3]) * 0.5)
+        lines = obj.data.body.splitlines() or [obj.data.body]
+        box_width = max(0.026, min(0.078, 0.006 + max(len(line) for line in lines) * 0.00215))
+        box_height = max(0.017, len(lines) * 0.017)
+        gap = 0.008 if obj.name == "label_HuR-like RBP" else 0.003
+        half_width, half_height = box_width * 0.5, box_height * 0.5
+        candidates = [
+            (molecule_box[1] + gap + half_width, anchor_norm[1]),
+            (anchor_norm[0], molecule_box[3] + gap + half_height),
+            (molecule_box[0] - gap - half_width, anchor_norm[1]),
+            (anchor_norm[0], molecule_box[2] - gap - half_height),
+            (molecule_box[1] + gap + half_width, molecule_box[3] + gap + half_height),
+            (molecule_box[0] - gap - half_width, molecule_box[3] + gap + half_height),
+            (molecule_box[1] + gap + half_width, molecule_box[2] - gap - half_height),
+            (molecule_box[0] - gap - half_width, molecule_box[2] - gap - half_height),
+        ]
+        valid = []
+        for candidate in candidates:
+            box = _label_box(candidate, box_width, box_height)
+            inside = box[0] >= 0.08 and box[1] <= 0.775 and box[2] >= 0.08 and box[3] <= 0.93
+            ribosome_cluster = {"label_Ribosome small subunit", "label_Ribosome large subunit"}
+            overlaps_other_molecule = any(
+                other_name != obj.name
+                and not ({obj.name, other_name} <= ribosome_cluster)
+                and _boxes_overlap(box, other_box, pad=0.002)
+                for other_name, other_box in molecule_boxes.items()
+            )
+            if inside and not overlaps_other_molecule and not any(_boxes_overlap(box, other) for other in occupied):
+                valid.append((candidate, box))
+        if not valid:
+            for candidate in candidates:
+                box = _label_box(candidate, box_width, box_height)
+                inside = box[0] >= 0.08 and box[1] <= 0.775 and box[2] >= 0.08 and box[3] <= 0.93
+                if inside and not any(_boxes_overlap(box, other) for other in occupied):
+                    valid.append((candidate, box))
+        if valid:
+            (x_norm, y_norm), placed_box = min(valid, key=lambda item: abs(item[0][0] - anchor_norm[0]) + abs(item[0][1] - anchor_norm[1]))
+        else:
+            x_norm = max(0.08 + box_width * 0.5, min(0.775 - box_width * 0.5, candidates[0][0]))
+            y_norm = max(0.08 + box_height * 0.5, min(0.93 - box_height * 0.5, candidates[0][1]))
+            placed_box = _label_box((x_norm, y_norm), box_width, box_height)
+            placed_box = min(
+                (_label_box(candidate, box_width, box_height) for candidate in candidates),
+                key=lambda box: sum(1 for other in occupied if _boxes_overlap(box, other)),
+            )
+            x_norm = (placed_box[0] + placed_box[1]) * 0.5
+            y_norm = (placed_box[2] + placed_box[3]) * 0.5
+        occupied.append(placed_box)
+        molecule_anchor = Vector(obj.get("molecule_anchor_mm", obj.location))
+        molecule_depth = (inv @ molecule_anchor).z
+        scene_depth = molecule_depth + 1.2
+        obj.location = _camera_overlay_point(camera, x_norm, y_norm, scene_depth)
+        obj.data.size = min(float(obj.data.size), 1.00)
+        obj.data.align_x = "CENTER"
+        obj.data.align_y = "CENTER"
+        displacement = abs(anchor_norm[0] - x_norm) + abs(anchor_norm[1] - y_norm)
+        obj["overview_label_position"] = [x_norm, y_norm]
+        rows.append(
+            {
+                "object": obj.name,
+                "anchor_position": [anchor_norm[0], anchor_norm[1]],
+                "view_position": [x_norm, y_norm],
+                "estimated_view_box": [box_width, box_height],
+                "molecule_projected_bounds": list(molecule_box),
+                "placement_space": "world_scene_at_molecule_depth",
+                "camera_local_depth_mm": scene_depth,
+                "leader": None,
+                "displacement": displacement,
+            }
+        )
+
+    compact_obj = bpy.data.objects.get(COMPACT_CALLOUT["object"])
+    compact_row = None
+    if compact_obj is not None:
+        compact_local = inv @ compact_obj.location
+        view_width, view_height = camera_view_dimensions(camera)
+        compact_anchor = (compact_local.x / view_width + 0.5, compact_local.y / view_height + 0.5)
+        compact_position = compact_anchor
+        compact_obj.data.body = COMPACT_CALLOUT["text"]
+        compact_obj.data.align_x = "LEFT"
+        compact_obj.data.align_y = "CENTER"
+        compact_obj.data.size = 1.34
+        compact_obj["overview_label_position"] = list(compact_position)
+        compact_row = {
+            "object": COMPACT_CALLOUT["object"],
+            "text": COMPACT_CALLOUT["text"],
+            "anchor_position": list(compact_anchor),
+            "view_position": list(compact_position),
+            "leader": None,
+            "placement_space": "world_scene_original_location",
+        }
+
+    primary_rows = []
+    for object_name, spec in PRIMARY_CALLOUTS.items():
         obj = bpy.data.objects.get(object_name)
         if obj is None:
             continue
-        local = inv @ obj.location
-        if aspect >= 1.0:
-            local.x = (x_norm - 0.5) * float(camera.data.ortho_scale)
-            local.y = (y_norm - 0.5) * float(camera.data.ortho_scale) / aspect
-        else:
-            local.x = (x_norm - 0.5) * float(camera.data.ortho_scale) * aspect
-            local.y = (y_norm - 0.5) * float(camera.data.ortho_scale)
-        obj.location = camera.matrix_world @ local
+        x_norm, y_norm = spec["view_position"]
+        obj.data.body = spec["text"]
+        obj.data.align_x = "LEFT"
+        obj.data.align_y = "CENTER"
+        obj.data.size = 1.55
+        obj.location = _camera_overlay_point(camera, x_norm, y_norm)
+        bracket_name = _create_group_bracket(
+            f"overview_group_bracket_{object_name}", camera, spec["span"], collections, materials
+        )
         obj["overview_label_position"] = [x_norm, y_norm]
-        rows.append({"object": object_name, "view_position": [x_norm, y_norm]})
+        primary_rows.append(
+            {
+                "object": object_name,
+                "text": spec["text"],
+                "view_position": [x_norm, y_norm],
+                "span": list(spec["span"]),
+                "bracket": bracket_name,
+                "leader": None,
+            }
+        )
     bpy.context.view_layer.update()
+    collision_pairs = []
+    molecule_overlap_pairs = []
+    for left_index, left in enumerate(rows):
+        left_box = _label_box(tuple(left["view_position"]), *left["estimated_view_box"])
+        for right in rows[left_index + 1:]:
+            right_box = _label_box(tuple(right["view_position"]), *right["estimated_view_box"])
+            if _boxes_overlap(left_box, right_box, pad=0.002):
+                collision_pairs.append([left["object"], right["object"]])
+        for molecule_name, molecule_box in molecule_boxes.items():
+            ribosome_cluster = {"label_Ribosome small subunit", "label_Ribosome large subunit"}
+            if (
+                molecule_name != left["object"]
+                and not ({left["object"], molecule_name} <= ribosome_cluster)
+                and _boxes_overlap(left_box, molecule_box, pad=0.001)
+            ):
+                molecule_overlap_pairs.append([left["object"], molecule_name])
     return {
-        "policy": "selected overview labels are spread in camera space after fitting the full-scene camera",
+        "policy": "three right-side camera-space brackets group protein, mRNA, and DNA; PDB labels remain in world space at molecule depth and are camera-packed immediately outside projected molecule bounds without leaders or backings",
         "camera": camera_name,
-        "placed_label_count": len(rows),
+        "placed_label_count": len(rows) + len(primary_rows) + (1 if compact_row else 0),
+        "primary_callouts": primary_rows,
+        "compact_callout": compact_row,
         "rows": rows,
+        "collision_pairs": collision_pairs,
+        "molecule_overlap_pairs": molecule_overlap_pairs,
+        "maximum_displacement": max((row["displacement"] for row in rows), default=0.0),
+        "maximum_displacement_object": max(rows, key=lambda row: row["displacement"])["object"] if rows else None,
     }
 
 
-def add_v5_cameras(manifest: dict, dna_path, mrna_path, compact_path, collections: dict, materials: dict) -> dict[str, str]:
+def _asset_report_location(asset_reports: list[dict], name: str) -> Vector:
+    for item in asset_reports:
+        if item.get("name") == name:
+            return Vector(item["location_mm"])
+    raise KeyError(f"Missing asset report for camera target: {name}")
+
+
+def add_v5_cameras(
+    manifest: dict,
+    dna_path,
+    mrna_path,
+    compact_path,
+    asset_reports: list[dict],
+    collections: dict,
+    materials: dict,
+) -> dict[str, str]:
     base.add_lighting_and_camera(collections, materials)
-    dna_center = v4_builder.path_center(dna_path)
-    mrna_center = v4_builder.path_center(mrna_path)
-    compact_center = v4_builder.path_center(compact_path)
-    ribosome_point = mrna_path.point_at_length(mrna_path.length * 0.892)
-    actin_point = mrna_path.point_at_length(mrna_path.length)
-    loop_report = nucleic_geometry.dna_nucleosome_loop_report(manifest) or {}
-    loop_center = loop_report.get("center_mm") or [0.0, -9.0, 0.0]
+    dna_center = contact_helpers.path_center(dna_path)
+    p53 = _asset_report_location(asset_reports, "p53 tetramer bound to DNA")
+    polymerase = _asset_report_location(asset_reports, "RNA polymerase II elongation complex")
+    nucleosome = _asset_report_location(asset_reports, "Nucleosome")
+    ribosome = (
+        _asset_report_location(asset_reports, "Ribosome large subunit")
+        + _asset_report_location(asset_reports, "Ribosome small subunit")
+        + _asset_report_location(asset_reports, "Standalone tRNA")
+    ) * (1.0 / 3.0)
+    actin = _asset_report_location(asset_reports, "Actin protein")
 
     camera_names = {
         "full_overview": create_camera(
@@ -838,45 +1154,167 @@ def add_v5_cameras(manifest: dict, dna_path, mrna_path, compact_path, collection
             Vector((dna_center.x + 12.0, dna_center.y - 6.0, 36.0)),
             190.0,
         ),
+        "p53_dna": create_camera(
+            "Camera_v5_p53_dna",
+            (p53.x - 8.0, p53.y - 12.0, p53.z + 9.0),
+            p53,
+            9.0,
+        ),
         "polymerase_rna_start": create_camera(
             "Camera_v5_polymerase_rna_start",
-            (mrna_path.points[0].x - 24.0, mrna_path.points[0].y - 38.0, mrna_path.points[0].z + 30.0),
-            Vector((mrna_path.points[0].x, mrna_path.points[0].y, mrna_path.points[0].z + 4.0)),
-            26.0,
+            (polymerase.x - 10.0, polymerase.y - 14.0, polymerase.z + 10.0),
+            polymerase,
+            11.0,
         ),
         "nucleosome_loop": create_camera(
             "Camera_v5_nucleosome_loop",
-            (loop_center[0] - 8.0, loop_center[1] - 12.0, (loop_center[2] if len(loop_center) > 2 else 0.0) + 9.0),
-            Vector((loop_center[0], loop_center[1], loop_center[2] if len(loop_center) > 2 else 0.0)),
-            8.0,
+            (nucleosome.x - 9.0, nucleosome.y - 13.0, nucleosome.z + 10.0),
+            nucleosome,
+            10.0,
         ),
-        "mrna_spiral": create_camera(
-            "Camera_v5_mrna_spiral",
-            (mrna_center.x - 48.0, mrna_center.y - 72.0, mrna_center.z + 58.0),
-            mrna_center,
-            92.0,
+        "ribosome_trna": create_camera(
+            "Camera_v5_ribosome_trna",
+            (ribosome.x - 13.0, ribosome.y - 18.0, ribosome.z + 15.0),
+            ribosome,
+            17.0,
         ),
-        "ribosome_top_translation": create_camera(
-            "Camera_v5_ribosome_top_translation",
-            (8.0, -40.0, 156.0),
-            Vector(
-                (
-                    (ribosome_point.x + actin_point.x) * 0.5,
-                    (ribosome_point.y + actin_point.y) * 0.5,
-                    (ribosome_point.z + actin_point.z) * 0.5,
-                )
-            ),
-            26.0,
-        ),
-        "compact_mrna": create_camera(
-            "Camera_v5_compact_mrna",
-            (compact_center.x - 12.0, compact_center.y - 30.0, compact_center.z + 32.0),
-            compact_center,
-            24.0,
+        "actin_product": create_camera(
+            "Camera_v5_actin_product",
+            (actin.x - 7.0, actin.y - 10.0, actin.z + 8.0),
+            actin,
+            7.0,
         ),
     }
     bpy.context.scene.camera = bpy.data.objects[camera_names["full_overview"]]
     return camera_names
+
+
+def _detail_path_curve(name: str, path, start_fraction: float, end_fraction: float, material, collection) -> str:
+    sample_count = 180
+    start = path.length * start_fraction
+    end = path.length * end_fraction
+    points = [path.point_at_length(start + (end - start) * index / sample_count) for index in range(sample_count + 1)]
+    obj = base.create_curve(
+        name,
+        [(point.x, point.y, point.z) for point in points],
+        0.13,
+        material,
+        collection,
+        resolution=2,
+    )
+    obj.hide_render = True
+    obj["detail_context"] = True
+    return obj.name
+
+
+def add_detail_context_curves(mrna_path, collections: dict, materials: dict) -> dict:
+    collection = collections.get("Detail context")
+    if collection is None:
+        collection = bpy.data.collections.new("Detail context")
+        bpy.context.scene.collection.children.link(collection)
+        collections["Detail context"] = collection
+    return {
+        "polymerase_rna_start": _detail_path_curve(
+            "detail_polymerase_nascent_rna",
+            mrna_path,
+            0.0,
+            0.055,
+            materials["rna_gold"],
+            collection,
+        ),
+        "ribosome_trna": _detail_path_curve(
+            "detail_ribosome_mrna",
+            mrna_path,
+            0.855,
+            0.935,
+            materials["rna_gold"],
+            collection,
+        ),
+    }
+
+
+FOCUS_OBJECT_PATTERNS = {
+    "p53_dna": ("p53 tetramer bound to DNA (3TS8)",),
+    "nucleosome_loop": ("Nucleosome (1AOI)",),
+    "polymerase_rna_start": ("RNA polymerase II elongation complex (2E2I)", "detail_polymerase_nascent_rna"),
+    "ribosome_trna": (
+        "Ribosome small subunit (1J5E)",
+        "Ribosome large subunit (1JJ2)",
+        "Standalone tRNA (4TNA)",
+        "detail_ribosome_mrna",
+    ),
+    "actin_product": ("Actin protein (1J6Z)",),
+}
+
+
+def snapshot_render_visibility() -> dict[str, bool]:
+    return {obj.name: bool(obj.hide_render) for obj in bpy.data.objects}
+
+
+def restore_render_visibility(snapshot: dict[str, bool]) -> None:
+    for name, hidden in snapshot.items():
+        obj = bpy.data.objects.get(name)
+        if obj is not None:
+            obj.hide_render = hidden
+
+
+def apply_focus_visibility(key: str) -> dict:
+    patterns = FOCUS_OBJECT_PATTERNS[key]
+    visible = []
+    for obj in bpy.data.objects:
+        if obj.type in {"CAMERA", "LIGHT"} or obj.get("v5_beauty_object"):
+            continue
+        should_show = any(pattern in obj.name for pattern in patterns)
+        obj.hide_render = not should_show
+        if should_show:
+            visible.append(obj.name)
+    return {"key": key, "patterns": list(patterns), "visible_objects": visible}
+
+
+def create_detail_title(key: str, camera_name: str, collections: dict, materials: dict) -> str:
+    for obj in list(bpy.data.objects):
+        if obj.get("v5_detail_title"):
+            bpy.data.objects.remove(obj, do_unlink=True)
+    camera = bpy.data.objects[camera_name]
+    obj = base.create_text(
+        f"detail_title_{key}",
+        DETAIL_TITLES[key],
+        (0.0, 0.0, 0.0),
+        max(0.32, float(camera.data.ortho_scale) * 0.036),
+        materials["black"],
+        collections["Labels"],
+        align="LEFT",
+    )
+    obj.location = _camera_overlay_point(camera, 0.07, 0.91)
+    obj.rotation_euler = camera.rotation_euler
+    obj.hide_render = False
+    obj["v5_detail_title"] = True
+    obj["detail_view"] = key
+    if key == "ribosome_trna":
+        source = bpy.data.objects.get("label_Standalone tRNA")
+        if source is not None:
+            anchor_local = camera.matrix_world.inverted() @ Vector(source.get("molecule_anchor_mm", source.location))
+            view_width, view_height = camera_view_dimensions(camera)
+            anchor_norm = (anchor_local.x / view_width + 0.5, anchor_local.y / view_height + 0.5)
+            label_position = (
+                max(0.10, min(0.74, anchor_norm[0] + 0.045)),
+                max(0.12, min(0.84, anchor_norm[1] + 0.025)),
+            )
+            trna = base.create_text(
+                "detail_label_trna",
+                "yeast tRNA-Phe (4TNA)",
+                (0.0, 0.0, 0.0),
+                max(0.24, float(camera.data.ortho_scale) * 0.023),
+                materials["black"],
+                collections["Labels"],
+                align="LEFT",
+            )
+            trna.location = _camera_overlay_point(camera, *label_position)
+            trna.rotation_euler = camera.rotation_euler
+            trna.hide_render = False
+            trna["v5_detail_title"] = True
+            trna["detail_view"] = key
+    return obj.name
 
 
 def path_bounds(path) -> dict:
@@ -982,6 +1420,47 @@ def compact_position_validation(positioning: dict, compact_center: list[float]) 
     }
 
 
+def trna_ribosome_separation_report(asset_reports: list[dict]) -> dict:
+    by_name = {item["name"]: item for item in asset_reports}
+    trna = by_name["Standalone tRNA"]
+    ribosomes = [by_name["Ribosome small subunit"], by_name["Ribosome large subunit"]]
+    trna_location = Vector(trna["location_mm"])
+    distances = {item["name"]: (trna_location - Vector(item["location_mm"])).length for item in ribosomes}
+    fractions = {
+        item["name"]: (item.get("attachment_empty") or {}).get("fraction")
+        for item in [trna, *ribosomes]
+    }
+    minimum = min(distances.values())
+    def component_bounds(item: dict) -> tuple[Vector, Vector]:
+        components = item.get("components", [])
+        return (
+            Vector(tuple(min(component["min_mm"][axis] for component in components) for axis in range(3))),
+            Vector(tuple(max(component["max_mm"][axis] for component in components) for axis in range(3))),
+        )
+
+    def aabb_gap(left: tuple[Vector, Vector], right: tuple[Vector, Vector]) -> float:
+        delta = Vector(tuple(max(0.0, left[0][axis] - right[1][axis], right[0][axis] - left[1][axis]) for axis in range(3)))
+        return delta.length
+
+    trna_bounds = component_bounds(trna)
+    surface_gaps = {item["name"]: aabb_gap(trna_bounds, component_bounds(item)) for item in ribosomes}
+    minimum_surface_gap = min(surface_gaps.values())
+    failures = []
+    if minimum < 4.0:
+        failures.append({"reason": "trna_not_visibly_separated_from_ribosome", "minimum_center_distance_mm": minimum, "minimum_required_mm": 4.0})
+    if minimum_surface_gap < 0.8:
+        failures.append({"reason": "trna_surface_silhouette_not_separated_from_ribosome", "minimum_surface_bbox_gap_mm": minimum_surface_gap, "minimum_required_mm": 0.8})
+    return {
+        "policy": "incoming tRNA is displayed beside the ribosome without a misleading visual connection to the mRNA path",
+        "center_distances_mm": distances,
+        "minimum_center_distance_mm": minimum,
+        "surface_bbox_gaps_mm": surface_gaps,
+        "minimum_surface_bbox_gap_mm": minimum_surface_gap,
+        "path_fractions": fractions,
+        "failures": failures,
+    }
+
+
 def validate_v5_report(report: dict) -> None:
     failures = []
     source_manifest = report.get("source_manifest", "").replace("\\", "/")
@@ -994,6 +1473,56 @@ def validate_v5_report(report: dict) -> None:
     mrna_nt = sum(int(segment.get("nt", 0)) for segment in report.get("mrna", {}).get("segments", []))
     if mrna_nt != 1852:
         failures.append({"reason": "wrong_mrna_nt", "mrna_nt": mrna_nt})
+    mrna_segment_order = [segment.get("name") for segment in report.get("mrna", {}).get("segments", [])]
+    if mrna_segment_order != ["3' UTR", "coding sequence", "5' UTR"]:
+        failures.append(
+            {
+                "reason": "wrong_mrna_order_from_polymerase",
+                "expected": ["3' UTR", "coding sequence", "5' UTR"],
+                "actual": mrna_segment_order,
+            }
+        )
+    if report.get("mrna", {}).get("path_origin") != "3_prime_at_polymerase_ii":
+        failures.append(
+            {
+                "reason": "wrong_mrna_path_origin",
+                "actual": report.get("mrna", {}).get("path_origin"),
+            }
+        )
+    for key in ("mrna", "compact_mrna"):
+        rna_report = report.get(key, {})
+        if not math.isclose(float(rna_report.get("total_measured_mm", 0.0)), 222.24, rel_tol=0.001, abs_tol=0.02):
+            failures.append({"reason": "wrong_rna_contour_length", "rna": key, "measured_mm": rna_report.get("total_measured_mm")})
+    mrna_report = report.get("mrna", {})
+    if mrna_report.get("surface_mode") != "twisted_groove":
+        failures.append({"reason": "wrong_elongated_rna_surface", "actual": mrna_report.get("surface_mode")})
+    if mrna_report.get("show_radial_nucleotide_detail") is not False:
+        failures.append({"reason": "elongated_rna_radial_detail_enabled"})
+    compact_report = report.get("compact_mrna", {})
+    if compact_report.get("variant") != "compact_rosette":
+        failures.append({"reason": "wrong_compact_rna_variant", "actual": compact_report.get("variant")})
+    if compact_report.get("stem_count") != 38 or compact_report.get("paired_stem_bridge_count", 0) <= 0:
+        failures.append({"reason": "wrong_compact_rosette_secondary_structure", "stem_count": compact_report.get("stem_count"), "bridges": compact_report.get("paired_stem_bridge_count")})
+    expected_detail_keys = {"p53_dna", "nucleosome_loop", "polymerase_rna_start", "ribosome_trna", "actin_product"}
+    actual_detail_keys = set(report.get("detail_render_specs", {}))
+    if actual_detail_keys != expected_detail_keys:
+        failures.append({"reason": "wrong_detail_render_set", "actual": sorted(actual_detail_keys), "expected": sorted(expected_detail_keys)})
+    label_policy = report.get("render_label_policy", {})
+    callout_text = {row.get("text") for row in label_policy.get("overview_label_placement", {}).get("primary_callouts", [])}
+    required_callout_text = {spec["text"] for spec in PRIMARY_CALLOUTS.values()}
+    if callout_text != required_callout_text:
+        failures.append({"reason": "wrong_primary_callouts", "actual": sorted(callout_text), "expected": sorted(required_callout_text)})
+    overview_labels = label_policy.get("overview_label_placement", {})
+    if len(overview_labels.get("primary_callouts", [])) != 3:
+        failures.append({"reason": "wrong_primary_callout_count", "actual": len(overview_labels.get("primary_callouts", []))})
+    if overview_labels.get("collision_pairs"):
+        failures.append({"reason": "overview_label_collisions", "pairs": overview_labels.get("collision_pairs")})
+    if overview_labels.get("molecule_overlap_pairs"):
+        failures.append({"reason": "overview_label_overlaps_unrelated_molecule", "pairs": overview_labels.get("molecule_overlap_pairs")})
+    if float(overview_labels.get("maximum_displacement", 1.0)) > 0.085:
+        failures.append({"reason": "overview_label_too_far_from_molecule", "object": overview_labels.get("maximum_displacement_object"), "maximum_displacement": overview_labels.get("maximum_displacement"), "maximum_allowed": 0.085})
+    if len(overview_labels.get("rows", [])) != len(report.get("pdb_assets", [])):
+        failures.append({"reason": "missing_pdb_overview_labels", "actual": len(overview_labels.get("rows", [])), "expected": len(report.get("pdb_assets", []))})
     origin_distance = (report.get("polymerase_rna_origin") or {}).get("distance_mm")
     if origin_distance is None:
         failures.append({"name": "RNA polymerase II elongation complex", "reason": "missing_polymerase_rna_origin"})
@@ -1010,6 +1539,7 @@ def validate_v5_report(report: dict) -> None:
     failures.extend(report.get("reader_order_validation", {}).get("failures", []))
     failures.extend(report.get("dna_cluster_validation", {}).get("failures", []))
     failures.extend(report.get("compact_positioning", {}).get("failures", []))
+    failures.extend(report.get("trna_ribosome_separation", {}).get("failures", []))
     failures.extend(report.get("contact_validation", {}).get("strict_contact_failures", []))
     scale_bars = report.get("scale_bars", {})
     units = report.get("units", {})
@@ -1046,9 +1576,7 @@ def validate_v5_report(report: dict) -> None:
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    if not v5.MANIFEST_PATH.exists():
-        v5.write_manifest()
-    manifest = json.loads(v5.MANIFEST_PATH.read_text(encoding="utf-8"))
+    manifest = v5.write_manifest()
 
     scene.clean_scene()
     scene.configure_scene()
@@ -1060,6 +1588,7 @@ def main() -> None:
 
     dna = build_v5_dna(manifest, collections, materials)
     mrna = build_v5_mrna(manifest, collections, materials)
+    actin_positioning = place_actin_from_mrna_endpoint(manifest, mrna["path"])
     compact_manifest, compact_positioning = compact_positioned_manifest(manifest, mrna["path"])
     compact_mrna = build_v5_compact_mrna(compact_manifest, collections, materials)
     mrna_settings = manifest.get("procedural_nucleic_acids", {}).get("mrna", {})
@@ -1098,6 +1627,7 @@ def main() -> None:
         "color_palette": color_palette,
         "beauty_rendering": beauty_rendering,
         "layout_intent": manifest.get("layout_intent", {}),
+        "actin_positioning": actin_positioning,
     }
     report["dna"] = dna["report"]
     report["mrna"] = mrna["report"]
@@ -1107,11 +1637,12 @@ def main() -> None:
     report["compact_positioning"] = compact_position_validation(compact_positioning, compact_mrna["center_mm"])
     report["scale_bars"] = add_v5_scale_bars(manifest, collections, materials)
     report["pdb_assets"] = scene.build_assets(manifest, collections, materials, path_context)
-    report["attachments"] = v4_builder.attachment_table(report["pdb_assets"])
+    report["trna_ribosome_separation"] = trna_ribosome_separation_report(report["pdb_assets"])
+    report["attachments"] = contact_helpers.attachment_table(report["pdb_assets"])
     report["dna_cluster_validation"] = dna_cluster_validation(report["pdb_assets"])
-    report["polymerase_rna_origin"] = v4_builder.polymerase_rna_origin_report(report["pdb_assets"], mrna["path"])
-    report["contact_validation"] = v4_builder.contact_validation(report["pdb_assets"])
-    final_contact = v4_builder.final_surface_contact_validation(
+    report["polymerase_rna_origin"] = contact_helpers.polymerase_rna_origin_report(report["pdb_assets"], mrna["path"])
+    report["contact_validation"] = contact_helpers.contact_validation(report["pdb_assets"])
+    final_contact = contact_helpers.final_surface_contact_validation(
         report["pdb_assets"],
         path_context,
         contact_radii,
@@ -1119,10 +1650,22 @@ def main() -> None:
     )
     report["contact_validation"]["final_surface_contact"] = final_contact
     report["contact_validation"]["strict_contact_failures"].extend(final_contact["failures"])
-    camera_names = add_v5_cameras(manifest, dna["path"], mrna["path"], compact_mrna["path"], collections, materials)
-    label_orientation = orient_labels_to_camera(camera_names["full_overview"])
+    camera_names = add_v5_cameras(
+        manifest,
+        dna["path"],
+        mrna["path"],
+        compact_mrna["path"],
+        report["pdb_assets"],
+        collections,
+        materials,
+    )
+    report["detail_context"] = add_detail_context_curves(mrna["path"], collections, materials)
+    for obj in bpy.data.objects:
+        if obj.type == "FONT":
+            obj.hide_render = True
     full_overview_camera_fit = fit_camera_to_renderables(camera_names["full_overview"])
-    overview_label_placement = place_overview_labels(camera_names["full_overview"])
+    label_orientation = orient_labels_to_camera(camera_names["full_overview"])
+    overview_label_placement = place_overview_labels(camera_names["full_overview"], collections, materials)
     report["beauty_rendering"]["environment"] = add_v5_beauty_environment(camera_names["full_overview"], collections)
     report["beauty_rendering"]["surface_polish"] = polish_v5_surface_rendering()
     report["render_label_policy"] = {
@@ -1133,23 +1676,56 @@ def main() -> None:
         "overview_label_placement": overview_label_placement,
         "full_overview_camera_fit": full_overview_camera_fit,
     }
+    report["detail_render_specs"] = {
+        key: {
+            "camera": camera_names[key],
+            "title": DETAIL_TITLES[key],
+            "output": str(DETAIL_PREVIEWS[key]),
+            "object_patterns": list(FOCUS_OBJECT_PATTERNS[key]),
+            "margin_fraction": 0.12,
+        }
+        for key in DETAIL_TITLES
+    }
     scene.validate_scene(report)
     validate_v5_report(report)
 
-    REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
-
+    overview_only = os.environ.get("V5_OVERVIEW_ONLY", "") == "1"
     primary_camera = bpy.data.objects[camera_names["full_overview"]]
     bpy.context.scene.camera = primary_camera
-    bpy.context.scene.render.filepath = str(PREVIEW_PATH)
+    bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS["full_overview"])
     bpy.ops.render.render(write_still=True)
-    for key, path in DETAIL_PREVIEWS.items():
-        camera = bpy.data.objects.get(camera_names[key])
-        if camera:
-            bpy.context.scene.camera = camera
-            bpy.context.scene.render.filepath = str(path)
-            bpy.ops.render.render(write_still=True)
+    shutil.copyfile(DETAIL_PREVIEWS["full_overview"], PREVIEW_PATH)
+
+    overview_visibility = snapshot_render_visibility()
+    detail_runs = {}
+    if overview_only and REPORT_PATH.exists():
+        detail_runs = json.loads(REPORT_PATH.read_text(encoding="utf-8")).get("detail_rendering", {})
+    for key in (() if overview_only else DETAIL_TITLES):
+        restore_render_visibility(overview_visibility)
+        visibility = apply_focus_visibility(key)
+        camera = bpy.data.objects[camera_names[key]]
+        bpy.context.scene.camera = camera
+        camera_fit = fit_camera_to_renderables(camera_names[key], margin_fraction=0.12)
+        environment = add_v5_beauty_environment(camera_names[key], collections)
+        title_object = create_detail_title(key, camera_names[key], collections, materials)
+        bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS[key])
+        bpy.ops.render.render(write_still=True)
+        detail_runs[key] = {
+            "visibility": visibility,
+            "camera_fit": camera_fit,
+            "environment": environment,
+            "title_object": title_object,
+        }
+
+    restore_render_visibility(overview_visibility)
+    for obj in list(bpy.data.objects):
+        if obj.get("v5_detail_title"):
+            bpy.data.objects.remove(obj, do_unlink=True)
+    report["detail_rendering"] = detail_runs
     bpy.context.scene.camera = primary_camera
+    report["beauty_rendering"]["environment"] = add_v5_beauty_environment(camera_names["full_overview"], collections)
+    REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
     print(f"Wrote {BLEND_PATH}")
     print(f"Wrote {PREVIEW_PATH}")
     print(f"Wrote {REPORT_PATH}")

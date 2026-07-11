@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import blender_nucleic_meshes as direct_meshes  # noqa: E402
-import build_gene_expression_scene as base  # noqa: E402
-import build_gene_expression_surface_scene as surface_scene  # noqa: E402
+import scene_core as base  # noqa: E402
+import surface_assets as surface_scene  # noqa: E402
 import procedural_nucleic_geometry as geom  # noqa: E402
 
 
@@ -405,7 +405,7 @@ def variant_specs() -> list[dict]:
             "dna": {"radius": 44.0, "start_deg": 222.0, "span_deg": -268.0, "samples": 46, "radial_amp": 4.4, "z_amp": 0.45, "phase": 0.08},
             "rna_fraction": 0.96,
             "rna": {"vertical_rise": 86.0, "start_radius": 13.5, "end_radius": 5.8, "turns": 2.05, "samples": 1600, "wiggle": 2.8, "phase": 0.12},
-            "intent": "more compact version of arrangement_v1 with DNA as an irregular partial circular base",
+            "intent": "compact DNA/RNA arrangement with an irregular partial circular base",
         },
         {
             "key": "dna_spiral_pedestal",

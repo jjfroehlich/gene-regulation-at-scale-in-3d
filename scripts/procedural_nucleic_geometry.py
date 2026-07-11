@@ -535,7 +535,7 @@ def nucleosome_loop_guide(manifest: dict, loop_override: dict | None = None) -> 
     }
 
 
-def arrangement_v1_nucleosome_loop_override(manifest: dict, config: dict, arc_path: SampledPath) -> dict:
+def path_nucleosome_loop_override(manifest: dict, config: dict, arc_path: SampledPath) -> dict:
     loop = manifest.get("procedural_nucleic_acids", {}).get("dna", {}).get("nucleosome_loop", {})
     fraction = float(config.get("nucleosome_loop_fraction", 0.77))
     distance = max(0.0, min(arc_path.length, arc_path.length * fraction))
@@ -553,31 +553,6 @@ def arrangement_v1_nucleosome_loop_override(manifest: dict, config: dict, arc_pa
         "exit_bridge_mm": float(loop.get("exit_bridge_mm", config.get("nucleosome_exit_bridge_mm", 8.0))),
     }
     return override
-
-
-def arrangement_v1_open_arc_with_nucleosome_loop_controls(manifest: dict, config: dict) -> list[tuple[float, float, float]]:
-    raw_arc = organic_dna_arc_controls(manifest, config)
-    arc_path = SampledPath(catmull_rom(raw_arc, 32))
-    loop_override = arrangement_v1_nucleosome_loop_override(manifest, config, arc_path)
-    guide = nucleosome_loop_guide(manifest, loop_override)
-    if guide is None:
-        return raw_arc
-
-    insert_distance = loop_override["arrangement_path_distance_mm"]
-    entry_bridge = float(loop_override["entry_bridge_mm"])
-    exit_bridge = float(loop_override["exit_bridge_mm"])
-    before_end = max(0.0, insert_distance - entry_bridge)
-    after_start = min(arc_path.length, insert_distance + exit_bridge)
-    before_count = max(4, int(before_end / 5.0))
-    after_count = max(4, int((arc_path.length - after_start) / 5.0))
-    controls: list[Vec] = []
-    for index in range(before_count + 1):
-        controls.append(arc_path.point_at_length(before_end * index / before_count))
-    controls.extend(guide["scene_points_mm"])
-    for index in range(1, after_count + 1):
-        distance = after_start + (arc_path.length - after_start) * index / after_count
-        controls.append(arc_path.point_at_length(distance))
-    return [point.to_tuple() for point in controls]
 
 
 def rounded_serpentine_controls(config: dict, xy_scale: float = 1.0) -> list[tuple[float, float, float]]:
@@ -714,7 +689,7 @@ def full_gene_serpentine_nucleosome_layout(
     def build_for_scale(scale: float) -> dict:
         base_controls = controls_builder(config, scale)
         base_path = SampledPath(catmull_rom(base_controls, 32))
-        loop_override = arrangement_v1_nucleosome_loop_override(manifest, config, base_path)
+        loop_override = path_nucleosome_loop_override(manifest, config, base_path)
         loop_override["entry_bridge_mm"] = entry_bridge
         loop_override["exit_bridge_mm"] = exit_bridge
         guide = nucleosome_loop_guide(manifest, loop_override)
@@ -820,10 +795,6 @@ def dna_controls(manifest: dict) -> list[tuple[float, float, float]]:
         return full_gene_serpentine_with_nucleosome_loop_controls(manifest, proxy.get("full_gene_serpentine", {}))
     if proxy.get("path_mode") == "v5_reader_order_serpentine_with_nucleosome_loop":
         return v5_reader_order_serpentine_with_nucleosome_loop_controls(manifest, proxy.get("full_gene_serpentine", {}))
-    if proxy.get("path_mode") == "arrangement_v1_open_arc_with_nucleosome_loop":
-        return arrangement_v1_open_arc_with_nucleosome_loop_controls(manifest, proxy.get("arrangement_v1", {}))
-    if proxy.get("path_mode") == "arrangement_v1_open_circle_arc":
-        return organic_dna_arc_controls(manifest, proxy.get("arrangement_v1", {}))
     loop = proxy.get("nucleosome_loop", {})
     if loop.get("enabled", False):
         guide = nucleosome_loop_guide(manifest)
@@ -913,9 +884,6 @@ def dna_nucleosome_loop_report(manifest: dict) -> dict | None:
     if proxy.get("path_mode") == "v5_reader_order_serpentine_with_nucleosome_loop":
         layout = v5_reader_order_serpentine_nucleosome_layout(manifest, proxy.get("full_gene_serpentine", {}))
         guide_override = layout["loop_override"]
-    if proxy.get("path_mode") == "arrangement_v1_open_arc_with_nucleosome_loop":
-        arc_path = SampledPath(catmull_rom(organic_dna_arc_controls(manifest, proxy.get("arrangement_v1", {})), 32))
-        guide_override = arrangement_v1_nucleosome_loop_override(manifest, proxy.get("arrangement_v1", {}), arc_path)
     guide = nucleosome_loop_guide(manifest, guide_override)
     if guide is not None:
         source_center = guide["source_center_A"]
@@ -1163,6 +1131,206 @@ def compact_mrnp_path(
     return [center_vec + (point - center_vec) * scale for point in points]
 
 
+def _bounded_integer_allocation(
+    total: int,
+    count: int,
+    minimum: int,
+    maximum: int,
+    rng: random.Random,
+) -> list[int]:
+    """Distribute an integer total deterministically within inclusive bounds."""
+    if count <= 0:
+        return []
+    total = max(count * minimum, min(count * maximum, total))
+    values = [minimum] * count
+    remaining = total - count * minimum
+    order = list(range(count))
+    rng.shuffle(order)
+    while remaining:
+        changed = False
+        for index in order:
+            if remaining <= 0:
+                break
+            if values[index] < maximum:
+                values[index] += 1
+                remaining -= 1
+                changed = True
+        if not changed:
+            break
+        order = order[1:] + order[:1]
+    return values
+
+
+def _sampled_self_clearance(points: list[Vec], sample_count: int = 320) -> float | None:
+    """Estimate non-local backbone clearance without an expensive all-pairs scan."""
+    if len(points) < 8:
+        return None
+    stride = max(1, len(points) // sample_count)
+    sampled = [(index, points[index]) for index in range(0, len(points), stride)]
+    exclusion = stride * 3
+    best = float("inf")
+    for left in range(len(sampled)):
+        index_a, point_a = sampled[left]
+        for right in range(left + 1, len(sampled)):
+            index_b, point_b = sampled[right]
+            if abs(index_b - index_a) <= exclusion:
+                continue
+            best = min(best, (point_b - point_a).length)
+    return best if math.isfinite(best) else None
+
+
+def structured_stem_loop_path(
+    guide_points: list[Vec],
+    total_nt: int,
+    nt_to_mm: float,
+    settings: dict,
+    *,
+    compact: bool,
+) -> dict:
+    """Fold a guide into a continuous, schematic secondary-structure-rich RNA.
+
+    Each motif follows the primary chain up one stem arm, around a hairpin loop,
+    and down its antiparallel partner.  The final uniform scale is deliberately
+    small and enforces the canonical contour-length invariant exactly.
+    """
+    secondary = settings.get("secondary_structure", {})
+    stem_count = int(
+        secondary.get("compact_stem_count" if compact else "elongated_stem_count", 40 if compact else 24)
+    )
+    paired_target = float(
+        secondary.get(
+            "compact_paired_fraction_target" if compact else "elongated_paired_fraction_target",
+            0.60 if compact else 0.40,
+        )
+    )
+    seed = int(secondary.get("compact_seed" if compact else "elongated_seed", 51852 if compact else 41852))
+    rng = random.Random(seed)
+    stem_min = int(secondary.get("stem_bp_min", 6))
+    stem_max = int(secondary.get("stem_bp_max", 18))
+    loop_min = int(secondary.get("hairpin_loop_nt_min", 4))
+    loop_max = int(secondary.get("hairpin_loop_nt_max", 12))
+    requested_bp = round(total_nt * paired_target * 0.5)
+    stem_bp = _bounded_integer_allocation(requested_bp, stem_count, stem_min, stem_max, rng)
+    loop_nt = [rng.randint(loop_min, loop_max) for _ in range(stem_count)]
+    allocated = 2 * sum(stem_bp) + sum(loop_nt)
+    if allocated >= total_nt:
+        raise ValueError(f"Secondary-structure allocation consumes {allocated}/{total_nt} nt")
+    linker_nt = total_nt - allocated
+
+    guide = SampledPath(guide_points)
+    if guide.length <= 0:
+        raise ValueError("Structured RNA guide has zero length")
+    anchor_distances = [guide.length * index / (stem_count + 1) for index in range(stem_count + 2)]
+    anchors = [guide.point_at_length(distance) for distance in anchor_distances]
+    tangents = [guide.tangent_at_length(distance) for distance in anchor_distances]
+
+    points: list[Vec] = [anchors[0]]
+    pair_indices: list[tuple[int, int]] = []
+    loop_ranges: list[tuple[int, int]] = []
+    connector_samples = max(3, int(linker_nt / max(stem_count + 1, 1) / 3))
+    a_form_diameter = float(secondary.get("a_form_diameter_mm", 0.92))
+
+    for stem_index in range(stem_count):
+        anchor = anchors[stem_index + 1]
+        connector_start = points[-1]
+        for step in range(1, connector_samples + 1):
+            points.append(connector_start.lerp(anchor, step / connector_samples))
+
+        tangent = tangents[stem_index + 1].normalized()
+        if compact:
+            angle = math.tau * (stem_index * 0.38196601125 + rng.uniform(-0.06, 0.06))
+            axis = Vec(math.cos(angle), math.sin(angle), 0.16 * math.sin(angle * 1.7)).normalized()
+        else:
+            normal, binormal = path_frame(tangent)
+            angle = (stem_index % 6 - 2.5) * 0.30 + rng.uniform(-0.10, 0.10)
+            axis = (normal * math.cos(angle) + binormal * math.sin(angle)).normalized()
+        separation_axis = tangent.cross(axis).normalized()
+        if separation_axis.length < 1e-6:
+            separation_axis = path_frame(axis)[0]
+
+        loop_length = loop_nt[stem_index] * nt_to_mm
+        separation = min(a_form_diameter * 0.62, max(0.28, 2.0 * loop_length / math.pi))
+        leg_length = stem_bp[stem_index] * nt_to_mm
+        base_a = anchor - separation_axis * (separation * 0.5)
+        base_b = anchor + separation_axis * (separation * 0.5)
+        top_center = anchor + axis * leg_length
+        top_a = top_center - separation_axis * (separation * 0.5)
+        top_b = top_center + separation_axis * (separation * 0.5)
+
+        points.append(base_a)
+        outbound: list[int] = []
+        arm_samples = max(5, stem_bp[stem_index] * 2)
+        for step in range(arm_samples + 1):
+            t = step / arm_samples
+            subtle_twist = 0.035 * math.sin(math.tau * stem_bp[stem_index] * t / 11.0)
+            point = base_a.lerp(top_a, t) + tangent * subtle_twist
+            points.append(point)
+            outbound.append(len(points) - 1)
+
+        loop_start = len(points)
+        loop_samples = max(8, loop_nt[stem_index] * 3)
+        radius = separation * 0.5
+        for step in range(1, loop_samples + 1):
+            theta = math.pi - math.pi * step / loop_samples
+            points.append(top_center + separation_axis * (radius * math.cos(theta)) + axis * (radius * math.sin(theta)))
+        loop_ranges.append((loop_start, len(points) - 1))
+
+        inbound: list[int] = []
+        for step in range(1, arm_samples + 1):
+            t = step / arm_samples
+            subtle_twist = -0.035 * math.sin(math.tau * stem_bp[stem_index] * (1.0 - t) / 11.0)
+            point = top_b.lerp(base_b, t) + tangent * subtle_twist
+            points.append(point)
+            inbound.append(len(points) - 1)
+        for pair_step in range(stem_bp[stem_index]):
+            out_index = outbound[min(len(outbound) - 1, round(pair_step * (len(outbound) - 1) / max(stem_bp[stem_index] - 1, 1)))]
+            in_index = inbound[min(len(inbound) - 1, round((stem_bp[stem_index] - 1 - pair_step) * (len(inbound) - 1) / max(stem_bp[stem_index] - 1, 1)))]
+            pair_indices.append((out_index, in_index))
+
+    final_start = points[-1]
+    for step in range(1, connector_samples + 1):
+        points.append(final_start.lerp(anchors[-1], step / connector_samples))
+
+    raw_length = polyline_length(points)
+    target_length = total_nt * nt_to_mm
+    scale_origin = mean_vec(points) if compact else points[0]
+    scale = target_length / raw_length if raw_length else 1.0
+    scaled_points = [scale_origin + (point - scale_origin) * scale for point in points]
+    base_pairs = [(scaled_points[left].to_tuple(), scaled_points[right].to_tuple()) for left, right in pair_indices]
+    measured = polyline_length(scaled_points)
+    structure_bounds = bounds(scaled_points)
+    paired_nt = 2 * sum(stem_bp)
+    report = {
+        "model": "deterministic_schematic_stem_loop",
+        "sequence_resolved": False,
+        "compact": compact,
+        "seed": seed,
+        "total_nt": total_nt,
+        "target_length_mm": target_length,
+        "measured_length_mm": measured,
+        "length_error_mm": measured - target_length,
+        "stem_count": stem_count,
+        "hairpin_loop_count": stem_count,
+        "junction_count": max(3, stem_count // 8),
+        "stem_bp": stem_bp,
+        "paired_nt": paired_nt,
+        "paired_fraction": paired_nt / total_nt,
+        "loop_nt": sum(loop_nt),
+        "linker_nt": linker_nt,
+        "allocation_check_nt": paired_nt + sum(loop_nt) + linker_nt,
+        "base_pair_bridge_count": len(base_pairs),
+        "a_form_bp_per_turn": float(secondary.get("a_form_bp_per_turn", 11.0)),
+        "a_form_diameter_mm": a_form_diameter,
+        "uniform_length_scale": scale,
+        "bbox": structure_bounds,
+        "sampled_self_clearance_mm": _sampled_self_clearance(scaled_points),
+        "biological_intent": (
+            "secondary-structure-rich compact RNA schematic" if compact else "moderately structured elongated translating RNA schematic"
+        ),
+    }
+    return {"points": scaled_points, "base_pairs": base_pairs, "loop_ranges": loop_ranges, "report": report}
+
+
 def split_path_by_lengths(points: list[Vec], segments: list[dict], nt_to_mm: float) -> list[dict]:
     path = SampledPath(points)
     cursor = 0.0
@@ -1314,6 +1482,15 @@ def build_mrna_model(manifest: dict) -> dict:
         "mrna",
         manifest.get("procedural_nucleic_surfaces", {}).get("mrna", {}),
     )
+    # The polymerase is attached to path point zero.  A nascent transcript's
+    # growing end at polymerase is its 3' end, so allocate the mature-mRNA
+    # color blocks away from Pol II in 3' UTR -> CDS -> 5' UTR order.  Keep the
+    # manifest itself in conventional 5' -> 3' biological order.
+    path_segments = (
+        list(reversed(segments))
+        if proxy.get("elongated_path_origin") == "3_prime_at_polymerase_ii"
+        else segments
+    )
     if proxy.get("path_mode") == "custom_mrna_path":
         raw_points = [Vec(*point) for point in proxy.get("custom_points_mm", [])]
         if len(raw_points) < 2:
@@ -1325,7 +1502,7 @@ def build_mrna_model(manifest: dict) -> dict:
         start = raw_points[0]
         scale = target_length / source_path.length
         scaled_points = [start + (point - start) * scale for point in raw_points]
-        segment_models = split_path_by_lengths(scaled_points, segments, nt_to_mm)
+        segment_models = split_path_by_lengths(scaled_points, path_segments, nt_to_mm)
         marker_centers = []
         scaled_path = SampledPath(scaled_points)
         for nt in range(50, sum(segment["nt"] for segment in segments) + 1, 50):
@@ -1348,19 +1525,22 @@ def build_mrna_model(manifest: dict) -> dict:
             "marker_centers": marker_centers,
             "report": report,
         }
-    if proxy.get("path_mode") == "arrangement_v1_polymerase_spiral":
-        points, spiral_report = conical_spiral_mrna_points(manifest, proxy.get("arrangement_v1", {}))
-        segment_models = split_path_by_lengths(points, segments, nt_to_mm)
+    if proxy.get("path_mode") == "canonical_polymerase_spiral":
+        spiral_config = proxy.get("canonical_spiral", {})
+        points, spiral_report = conical_spiral_mrna_points(manifest, spiral_config)
+        segment_models = split_path_by_lengths(points, path_segments, nt_to_mm)
         marker_centers = []
         for nt in range(50, sum(segment["nt"] for segment in segments) + 1, 50):
             marker_centers.append(SampledPath(points).point_at_length(nt * nt_to_mm))
         report = mrna_report_from_segments(
             manifest,
             segment_models,
-            "arrangement_v1_polymerase_origin_conical_spiral_mrna",
+            "canonical_v5_polymerase_origin_conical_spiral_mrna",
             "deterministic_conical_spiral_tightening_to_top",
         )
         report["spiral"] = spiral_report
+        report["path_origin"] = proxy.get("elongated_path_origin", "5_prime")
+        report["path_segment_order_from_origin"] = [segment["name"] for segment in path_segments]
         return {
             "path": SampledPath([point.to_tuple() for point in points]),
             "segments": segment_models,
@@ -1417,6 +1597,10 @@ def build_compact_mrna_model(manifest: dict) -> dict:
         points_count=max(2200, int(total_nt * 1.35)),
         seed=int(proxy.get("compact_seed", 304)),
     )
+    secondary = proxy.get("secondary_structure", {})
+    if secondary.get("model") == "deterministic_schematic_stem_loop":
+        structure = structured_stem_loop_path(full_points, total_nt, nt_to_mm, proxy, compact=True)
+        full_points = structure["points"]
     segment_models = split_path_by_lengths(full_points, mrna["segments"], nt_to_mm)
     all_points = []
     marker_centers = []
@@ -1432,12 +1616,31 @@ def build_compact_mrna_model(manifest: dict) -> dict:
             fraction = (nt - nt_cursor) / segment["nt"]
             marker_centers.append(points[min(len(points) - 1, int(fraction * (len(points) - 1)))])
         nt_cursor += segment["nt"]
-    report = mrna_report_from_segments(manifest, segment_models, "optimization_v3_compact_mrnp_rosette_hairpin_mrna", "continuous_mRNP_rosette_hairpin_globule")
+    report = mrna_report_from_segments(
+        manifest,
+        segment_models,
+        "optimization_v3_compact_mrnp_rosette_hairpin_mrna",
+        "continuous_mRNP_rosette_hairpin_globule",
+    )
     report["model_basis"] = {
         "biological_intent": "schematic compact mRNP-like fold with many local hairpin/rosette turns",
         "not_sequence_specific": True,
         "translation_state": "compact non-translating or storage/stress-associated mRNP, for visual contrast with elongated mRNA",
     }
+    if secondary.get("model") == "deterministic_schematic_stem_loop":
+        report.update(structure["report"])
+        report["variant"] = str(proxy.get("compact_variant", "compact_rosette"))
+        report["rna_only"] = True
+        return {
+            "path": SampledPath(all_points),
+            "segments": segment_models,
+            "marker_centers": marker_centers,
+            "secondary_structure": {
+                "base_pairs": structure["base_pairs"],
+                "loop_ranges": structure["loop_ranges"],
+            },
+            "report": report,
+        }
     return {
         "path": SampledPath(all_points),
         "segments": segment_models,

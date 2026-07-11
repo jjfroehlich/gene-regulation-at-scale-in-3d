@@ -10,7 +10,7 @@ import bpy
 from mathutils import Vector
 from mathutils.kdtree import KDTree
 
-import build_gene_expression_scene as base
+import scene_core as base
 import procedural_nucleic_geometry as geom
 
 
@@ -233,6 +233,7 @@ def tube_mesh(
     sides: int,
     bump_amplitude: float = 0.0,
     cap: bool = True,
+    surface_mode: str = "default",
 ) -> tuple[list[tuple[float, float, float]], list[tuple[int, ...]]]:
     centers = [as_vector(point) for point in points]
     vertices: list[tuple[float, float, float]] = []
@@ -244,10 +245,14 @@ def tube_mesh(
         normal, binormal = path_frame(tangent_for(centers, i))
         for j in range(sides):
             angle = 2.0 * math.pi * j / sides
-            bump = 1.0 + bump_amplitude * (
-                0.55 * math.sin(i * 0.73 + j * 1.91)
-                + 0.45 * math.sin(i * 1.37 - j * 0.82)
-            )
+            if surface_mode == "twisted_groove":
+                bump = 1.0 + 0.085 * math.cos(2.0 * (angle - i * 0.055))
+                bump += 0.018 * math.sin(math.tau * i / 19.0)
+            else:
+                bump = 1.0 + bump_amplitude * (
+                    0.55 * math.sin(i * 0.73 + j * 1.91)
+                    + 0.45 * math.sin(i * 1.37 - j * 0.82)
+                )
             ring_radius = max(radius * 0.5, radius * bump)
             point = center + normal * (math.cos(angle) * ring_radius) + binormal * (math.sin(angle) * ring_radius)
             vertices.append((point.x, point.y, point.z))
@@ -548,6 +553,8 @@ def build_mrna_meshes_from_model(
     smooth_factor = float(settings.get("direct_smooth_factor", 0.08))
     smooth_iterations = int(settings.get("direct_smooth_iterations", 1))
     unified = bool(settings.get("direct_unified_mesh", False))
+    show_radial_detail = bool(settings.get("show_radial_nucleotide_detail", True))
+    surface_mode = str(settings.get("surface_mode", "default")) if style_suffix == "elongated" else "default"
 
     component_reports = []
     nt_to_mm = manifest["units"]["mrna_nt_to_mm"]
@@ -555,7 +562,9 @@ def build_mrna_meshes_from_model(
     for segment_model in model["segments"]:
         segment = segment_model["segment"]
         material = materials[segment["color"]]
-        vertices, faces = tube_mesh(segment_model["points"], tube_radius, tube_sides, bump)
+        vertices, faces = tube_mesh(
+            segment_model["points"], tube_radius, tube_sides, bump, surface_mode=surface_mode
+        )
         segment_vertices: list[tuple[float, float, float]] = []
         segment_faces: list[tuple[int, ...]] = []
         if unified:
@@ -578,7 +587,8 @@ def build_mrna_meshes_from_model(
 
         path = geom.SampledPath(segment_model["points"])
         lobe_centers = []
-        for local_nt in range(0, segment["nt"], lobe_every):
+        lobe_nt_range = range(0, segment["nt"], lobe_every) if show_radial_detail else ()
+        for local_nt in lobe_nt_range:
             distance = min(path.length, local_nt * nt_to_mm)
             center = as_vector(path.point_at_length(distance))
             tangent = as_vector(path.tangent_at_length(distance))
@@ -624,7 +634,8 @@ def build_mrna_meshes_from_model(
         detail_vertices: list[tuple[float, float, float]] = []
         detail_faces: list[tuple[int, ...]] = []
         connector_segments: list[tuple[Vector, Vector]] = []
-        for local_nt in range(0, segment["nt"], detail_every):
+        detail_nt_range = range(0, segment["nt"], detail_every) if show_radial_detail else ()
+        for local_nt in detail_nt_range:
             distance = min(path.length, local_nt * nt_to_mm)
             center = as_vector(path.point_at_length(distance))
             tangent = as_vector(path.tangent_at_length(distance))
@@ -736,6 +747,40 @@ def build_mrna_meshes_from_model(
             )
         nt_cursor += segment["nt"]
 
+    secondary = model.get("secondary_structure", {})
+    pair_segments = [
+        (Vector(left), Vector(right))
+        for left, right in secondary.get("base_pairs", [])
+    ]
+    if pair_segments:
+        bridge_radius = float(settings.get("stem_bridge_radius_mm", 0.024))
+        bridge_vertices, bridge_faces = cylinder_segments_mesh(
+            pair_segments,
+            bridge_radius,
+            7,
+            bump * 0.15,
+        )
+        bridge_obj, bridge_report = create_mesh_object(
+            f"{object_prefix} paired stem bridges",
+            bridge_vertices,
+            bridge_faces,
+            materials["rna_gold"],
+            collections["mRNA"],
+            style,
+            voxel_size=voxel_size,
+            smooth_factor=smooth_factor,
+            smooth_iterations=smooth_iterations,
+        )
+        bridge_obj["component"] = "paired_stem_bridges"
+        component_reports.append(
+            dict(
+                bridge_report,
+                component="paired_stem_bridges",
+                represented_base_pairs=len(pair_segments),
+                geometry="inward_facing_base_pair_bridges",
+            )
+        )
+
     report = dict(model["report"])
     report.update(
         {
@@ -749,6 +794,10 @@ def build_mrna_meshes_from_model(
             "phosphate_radius_mm": phosphate_radius,
             "sugar_radius_mm": sugar_radius,
             "rna_base_ellipsoid_radii_mm": base_radii,
+            "show_radial_nucleotide_detail": show_radial_detail,
+            "surface_mode": surface_mode,
+            "explicit_stem_loop_branches": style_suffix == "compact" and bool(pair_segments),
+            "paired_stem_bridge_count": len(pair_segments),
             "components": component_reports,
         }
     )
