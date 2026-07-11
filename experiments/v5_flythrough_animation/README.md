@@ -1,6 +1,6 @@
 # V5 Flythrough Animation
 
-This experiment adds a shorter educational camera flight on top of the existing canonical V5 `.blend`. It does not change the canonical V5 scene builder.
+This experiment adds a short camera flight on top of the existing canonical V5 `.blend`. It does not change the canonical V5 scene builder.
 
 The current cut uses a perspective camera, keyed focal length, keyed depth of field, longer camera holds on important molecules, animated molecule color pulses, localized beat lights, soft key/rim lighting, subtle volumetric atmosphere, compositor glow/color grading, and camera captions so the wide scale shots and molecule close-ups read more like a guided scientific animation.
 

@@ -6,7 +6,7 @@ The GitHub README uses the tracked web copy at `docs/images/poster-2017-gene-exp
 
 Original note:
 
-> transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
+> Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
 
 ## Source Links
 
@@ -20,7 +20,7 @@ Original note:
 - [PDB-101 Molecule of the Month 112](https://pdb101.rcsb.org/motm/112).
 - [PDB-101 Molecule of the Month 31](https://pdb101.rcsb.org/motm/31).
 
-The 2017 poster note credits David Goodsell and RCSB PDB. The current docs keep source links close to the tracked poster and V5 scene descriptions so later image or structure changes can be audited.
+The 2017 poster note credits David Goodsell and RCSB PDB. 
 
 ## Current V5 PDB-Derived Assets
 
@@ -43,7 +43,3 @@ The 2017 poster note credits David Goodsell and RCSB PDB. The current docs keep 
 | `3Q0Q` | Pumilio2 RNA-binding domain | https://www.rcsb.org/structure/3Q0Q |
 | `1ZDH` | MS2 coat protein with RNA | https://www.rcsb.org/structure/1ZDH |
 | `2H5Q` | mCherry/RFP tag | https://www.rcsb.org/structure/2H5Q |
-
-## Generated Assets
-
-Current README render images are web-sized copies derived from ignored generated outputs under `outputs/canonical/`. The source `.blend`, render PNGs, and reports remain reproducible build artifacts rather than tracked documentation assets.
