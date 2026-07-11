@@ -88,6 +88,19 @@ The V5 build uses:
 
 More details in [docs/workflow.md](docs/workflow.md).
 
+## Sketchfab Exports
+
+Upload-ready molecular-scene exports are written to `outputs/sketchfab/`:
+
+- `gene_expression_canonical_v5_sketchfab.glb` (preferred)
+- `gene_expression_canonical_v5_sketchfab.fbx` (fallback)
+
+Regenerate them from the canonical blend with:
+
+```powershell
+.\scripts\run_sketchfab_export.ps1
+```
+
 ## Experiments
 
 Experiments to try out variations or new features are isolated under `experiments/`:

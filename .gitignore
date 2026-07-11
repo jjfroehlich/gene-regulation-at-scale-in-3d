@@ -24,8 +24,6 @@ tools/
 # Generated canonical renders, Blender scenes, and reports
 outputs/
 
-
-
 # Local reference images kept outside Git.
 /2014-mol-mach-poster_editing_simplified*.jpg
 
@@ -41,6 +39,10 @@ experiments/procedural_nucleic_acids/assets/
 *.blend2
 *.blend@
 *.MNSession
+
+# other formats
+*.fbx
+*.glb
 
 # Regenerated PyMOL exports and scratch assets
 assets/pymol_exports/surface_assets/
