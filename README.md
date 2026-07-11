@@ -6,15 +6,17 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 
 ## Render Details
 
-| p53 tetramer with DNA | Nucleosome loop |
+|  |  |
 | --- | --- |
 | ![Full p53 tetramer bound to DNA](docs/images/v5-p53-dna.jpg) | ![Nucleosome core with wrapped DNA](docs/images/v5-nucleosome-loop.jpg) |
 
-| RNA polymerase II | Ribosome and tRNA |
+|  |  |
 | --- | --- |
 | ![RNA polymerase II with nascent RNA](docs/images/v5-transcription-start.jpg) | ![Ribosome with tRNA](docs/images/v5-translation.jpg) |
 
-![ACTB protein product](docs/images/v5-actin.jpg)
+|  |  |
+| --- | --- |
+| ![ACTB protein product](docs/images/v5-actin.jpg) | ![Cas9 with guide and target DNA](docs/images/v5-cas9-dna.jpg) |
 
 ## What Is Being Build Here
 - Scale-accurate 3D scene. 
@@ -73,6 +75,7 @@ V5 detail previews are written beside the main preview:
 - `outputs/canonical/preview_gene_expression_surface_style_v5_nucleosome_loop.png`
 - `outputs/canonical/preview_gene_expression_surface_style_v5_ribosome_trna.png`
 - `outputs/canonical/preview_gene_expression_surface_style_v5_actin_product.png`
+- `outputs/canonical/preview_gene_expression_surface_style_v5_cas9_dna.png`
 
 The V5 build uses:
 

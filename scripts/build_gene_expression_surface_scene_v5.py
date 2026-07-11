@@ -37,7 +37,9 @@ DETAIL_PREVIEWS = {
     "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_nucleosome_loop.png",
     "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_ribosome_trna.png",
     "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_actin_product.png",
+    "cas9_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_cas9_dna.png",
 }
+DETAIL_SHARED_ORTHO_SCALE_MM = 42.0
 PROTEIN_AA_CONTOUR_NM = v5.PROTEIN_AA_CONTOUR_NM
 NANOMETER_SCALE_BAR_NM = 10.0
 V5_MATERIAL_COLORS = {
@@ -113,6 +115,7 @@ DETAIL_TITLES = {
     "polymerase_rna_start": "RNA polymerase II + nascent RNA (2E2I)",
     "ribosome_trna": "ribosome + tRNA",
     "actin_product": "ACTB protein (1J6Z)",
+    "cas9_dna": "Cas9 + guide/target DNA (4UN3)",
 }
 
 
@@ -1146,6 +1149,7 @@ def add_v5_cameras(
         + _asset_report_location(asset_reports, "Standalone tRNA")
     ) * (1.0 / 3.0)
     actin = _asset_report_location(asset_reports, "Actin protein")
+    cas9 = _asset_report_location(asset_reports, "Cas9")
 
     camera_names = {
         "full_overview": create_camera(
@@ -1183,6 +1187,12 @@ def add_v5_cameras(
             (actin.x - 7.0, actin.y - 10.0, actin.z + 8.0),
             actin,
             7.0,
+        ),
+        "cas9_dna": create_camera(
+            "Camera_v5_cas9_dna",
+            (cas9.x - 9.0, cas9.y - 13.0, cas9.z + 10.0),
+            cas9,
+            DETAIL_SHARED_ORTHO_SCALE_MM,
         ),
     }
     bpy.context.scene.camera = bpy.data.objects[camera_names["full_overview"]]
@@ -1244,6 +1254,7 @@ FOCUS_OBJECT_PATTERNS = {
         "detail_ribosome_mrna",
     ),
     "actin_product": ("Actin protein (1J6Z)",),
+    "cas9_dna": ("Cas9 (4UN3)",),
 }
 
 
@@ -1503,7 +1514,7 @@ def validate_v5_report(report: dict) -> None:
         failures.append({"reason": "wrong_compact_rna_variant", "actual": compact_report.get("variant")})
     if compact_report.get("stem_count") != 38 or compact_report.get("paired_stem_bridge_count", 0) <= 0:
         failures.append({"reason": "wrong_compact_rosette_secondary_structure", "stem_count": compact_report.get("stem_count"), "bridges": compact_report.get("paired_stem_bridge_count")})
-    expected_detail_keys = {"p53_dna", "nucleosome_loop", "polymerase_rna_start", "ribosome_trna", "actin_product"}
+    expected_detail_keys = {"p53_dna", "nucleosome_loop", "polymerase_rna_start", "ribosome_trna", "actin_product", "cas9_dna"}
     actual_detail_keys = set(report.get("detail_render_specs", {}))
     if actual_detail_keys != expected_detail_keys:
         failures.append({"reason": "wrong_detail_render_set", "actual": sorted(actual_detail_keys), "expected": sorted(expected_detail_keys)})
@@ -1683,6 +1694,7 @@ def main() -> None:
             "output": str(DETAIL_PREVIEWS[key]),
             "object_patterns": list(FOCUS_OBJECT_PATTERNS[key]),
             "margin_fraction": 0.12,
+            "shared_ortho_scale_mm": DETAIL_SHARED_ORTHO_SCALE_MM,
         }
         for key in DETAIL_TITLES
     }
@@ -1706,6 +1718,16 @@ def main() -> None:
         camera = bpy.data.objects[camera_names[key]]
         bpy.context.scene.camera = camera
         camera_fit = fit_camera_to_renderables(camera_names[key], margin_fraction=0.12)
+        fitted_scale = float(camera.data.ortho_scale)
+        if fitted_scale > DETAIL_SHARED_ORTHO_SCALE_MM + 1e-6:
+            raise RuntimeError(
+                f"Detail target {key} needs {fitted_scale:.3f} mm, exceeding shared "
+                f"orthographic scale {DETAIL_SHARED_ORTHO_SCALE_MM:.3f} mm"
+            )
+        camera.data.ortho_scale = DETAIL_SHARED_ORTHO_SCALE_MM
+        camera_fit["auto_fit_ortho_scale_mm"] = fitted_scale
+        camera_fit["new_ortho_scale_mm"] = DETAIL_SHARED_ORTHO_SCALE_MM
+        camera_fit["scale_policy"] = "identical_orthographic_scale_for_cross_panel_size_comparison"
         environment = add_v5_beauty_environment(camera_names[key], collections)
         title_object = create_detail_title(key, camera_names[key], collections, materials)
         bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS[key])
