@@ -22,7 +22,7 @@ Original note:
 
 The 2017 poster note credits David Goodsell and RCSB PDB. 
 
-## Current V5 PDB-Derived Assets
+## Current V6 PDB-Derived Assets
 
 | PDB ID | Scene role | Source |
 | --- | --- | --- |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export upload-ready canonical V5 models for Sketchfab.
+"""Export upload-ready versioned canonical models for Sketchfab.
 
 Run with Blender in background mode after building the canonical scene.
 """
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
+import argparse
 from pathlib import Path
 
 import bpy
@@ -15,9 +17,18 @@ import bpy
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORT_DIR = ROOT / "outputs" / "sketchfab"
-GLB_PATH = EXPORT_DIR / "gene_expression_canonical_v5_sketchfab.glb"
-FBX_PATH = EXPORT_DIR / "gene_expression_canonical_v5_sketchfab.fbx"
-REPORT_PATH = EXPORT_DIR / "gene_expression_canonical_v5_sketchfab_export_report.json"
+
+
+def parse_args() -> argparse.Namespace:
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--canonical-version", choices=("v5", "v6"), default="v6")
+    return parser.parse_args(argv)
+
+
+def output_paths(version: str) -> tuple[Path, Path, Path]:
+    stem = f"gene_expression_canonical_{version}_sketchfab"
+    return EXPORT_DIR / f"{stem}.glb", EXPORT_DIR / f"{stem}.fbx", EXPORT_DIR / f"{stem}_export_report.json"
 
 
 def sha256(path: Path) -> str:
@@ -38,7 +49,9 @@ def select_molecular_meshes() -> list[bpy.types.Object]:
             obj.type == "MESH"
             and not obj.hide_render
             and not obj.get("v5_beauty_object")
+            and not obj.get("v6_beauty_object")
             and not obj.get("v5_detail_title")
+            and not obj.get("v6_detail_title")
             and collection_names.isdisjoint(excluded_collections)
         )
         obj.select_set(include)
@@ -51,10 +64,12 @@ def select_molecular_meshes() -> list[bpy.types.Object]:
 
 
 def main() -> None:
+    args = parse_args()
+    glb_path, fbx_path, report_path = output_paths(args.canonical_version)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     selected = select_molecular_meshes()
     bpy.ops.export_scene.gltf(
-        filepath=str(GLB_PATH),
+        filepath=str(glb_path),
         export_format="GLB",
         use_selection=True,
         export_apply=True,
@@ -63,7 +78,7 @@ def main() -> None:
         export_materials="EXPORT",
     )
     bpy.ops.export_scene.fbx(
-        filepath=str(FBX_PATH),
+        filepath=str(fbx_path),
         use_selection=True,
         object_types={"MESH"},
         use_mesh_modifiers=True,
@@ -76,19 +91,20 @@ def main() -> None:
     )
     report = {
         "source_blend": bpy.data.filepath,
+        "canonical_version": args.canonical_version,
         "selection_policy": "visible molecular meshes only; excludes cameras, lights, backdrop, labels, scale bars, and detail-only context",
         "scale_policy": "one common scene scale preserved across all molecular objects",
         "selected_object_count": len(selected),
         "selected_objects": [obj.name for obj in selected],
         "exports": {},
     }
-    for name, path in (("glb_preferred", GLB_PATH), ("fbx_fallback", FBX_PATH)):
+    for name, path in (("glb_preferred", glb_path), ("fbx_fallback", fbx_path)):
         report["exports"][name] = {
             "path": str(path),
             "bytes": path.stat().st_size,
             "sha256": sha256(path),
         }
-    REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
 
 
