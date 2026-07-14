@@ -119,7 +119,7 @@ try {
                 "fps=6,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=96[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5"
             }
             else {
-                "fps=1,setpts=N/(6*TB),scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=96[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5"
+                "setpts=PTS/2,fps=24,scale=280:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5"
             }
             Invoke-Checked "Build README GIF from rendered video" {
                 & $FfmpegExe -y -i $VideoPath -vf $gifFilter $ReadmeGif

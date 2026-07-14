@@ -45,7 +45,7 @@ The tracked README preview is:
 
 - `docs/images/v5-flythrough-preview.gif`
 
-Full renders sample representative frames for the README GIF so the tracked preview stays compact. Smoke-test renders use the richer short preview directly.
+Full review renders use every source frame and play the tracked preview at 24 fps with a gentle 2x speed-up. The resulting 30-second, 280x158 GIF retains all 721 rendered frames for smooth motion while controlling file size through reduced dimensions and a 64-color palette. Smoke-test renders use the richer short preview directly.
 
 ## Storyboard
 
