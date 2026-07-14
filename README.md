@@ -28,19 +28,16 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 - PDB-derived molecular surfaces with generated DNA/RNA meshes at shared scale: `1 nm = 0.4 mm`.
 - Note: this is of course not a realistic situation from a crowded cell. Also, between transcription and before translation the mRNA would need to be exported from the nucleus. 
 
-## Flythrough Animation (in-progress)
+## Flythrough
 
 ![V5 educational flythrough animation preview](docs/images/v5-flythrough-preview.gif)
 
-A separate [flythrough animation experiment](experiments/v5_flythrough_animation/README.md) exports a cinematic camera flight. 
-
 ## 2017 Poster
 
-This project builds on a poster about gene expression control at molecular scale that I made in 2017. 
+This project builds on a poster I made in 2017. 
 
 ![2017 gene expression scale poster](docs/images/poster-2017-gene-expression-scale.png)
 
-Original source note:
 
 > Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
 

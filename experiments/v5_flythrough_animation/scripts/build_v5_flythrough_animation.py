@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SOURCE_BLEND = ROOT / "outputs" / "canonical" / "gene_expression_surface_style_v5.blend"
 DEFAULT_REPORT = ROOT / "outputs" / "canonical" / "gene_expression_surface_scene_v5_report.json"
 DEFAULT_OUTPUT_DIR = ROOT / "experiments" / "v5_flythrough_animation" / "outputs"
+STORY_DURATION_SECONDS = 60.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,7 +33,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--output-blend", type=Path)
     parser.add_argument("--output-mp4", type=Path)
-    parser.add_argument("--duration-seconds", type=float, default=60.0)
+    parser.add_argument("--frames-dir", type=Path)
+    parser.add_argument("--render-profile", choices=("final", "review", "smoke"), default="final")
+    parser.add_argument("--duration-seconds", type=float, default=STORY_DURATION_SECONDS)
     parser.add_argument("--fps", type=int, default=24)
     parser.add_argument("--resolution-x", type=int, default=1920)
     parser.add_argument("--resolution-y", type=int, default=1080)
@@ -428,7 +432,7 @@ def configure_cinematic_lighting(collection: bpy.types.Collection, target: bpy.t
         create_point_light(
             "Animation_Camera_Eye_Light",
             Vector((0.0, 0.0, -18.0)),
-            360.0,
+            1800.0,
             (0.92, 0.96, 1.0),
             collection,
             target,
@@ -651,6 +655,17 @@ def hide_existing_backdrops() -> list[str]:
     return hidden
 
 
+def hide_existing_overview_guides() -> list[str]:
+    hidden = []
+    for obj in bpy.data.objects:
+        if not obj.name.startswith("overview_group_"):
+            continue
+        obj.hide_viewport = True
+        obj.hide_render = True
+        hidden.append(obj.name)
+    return hidden
+
+
 def create_label(
     name: str,
     text: str,
@@ -675,6 +690,40 @@ def create_label(
     constraint.target = camera
     animate_visibility_window(obj, start, end)
     return obj
+
+
+def create_label_leader(
+    name: str,
+    anchor: Vector,
+    label_location: Vector,
+    mat: bpy.types.Material,
+    collection: bpy.types.Collection,
+    start: int,
+    end: int,
+) -> bpy.types.Object:
+    direction = label_location - anchor
+    endpoint = label_location - direction.normalized() * min(0.75, direction.length * 0.18)
+    obj = create_curve_object(name, [anchor, endpoint], 0.014, mat, collection)
+    animate_visibility_window(obj, start, end)
+    return obj
+
+
+def camera_plane_label_location(
+    anchor: Vector,
+    camera_location: Vector,
+    focus: Vector,
+    screen_x: float,
+    screen_y: float,
+) -> Vector:
+    """Offset a molecule-attached label in the intended shot's screen plane."""
+    direction = (focus - camera_location).normalized()
+    right = direction.cross(Vector((0.0, 0.0, 1.0)))
+    if right.length < 1e-6:
+        right = Vector((1.0, 0.0, 0.0))
+    else:
+        right.normalize()
+    up = right.cross(direction).normalized()
+    return anchor + right * screen_x + up * screen_y
 
 
 def create_camera_label(
@@ -759,8 +808,353 @@ def bbox_center(components: list[dict]) -> Vector:
 
 
 def frame_at(seconds: float, duration_seconds: float, fps: int) -> int:
-    scaled = seconds * duration_seconds / 60.0
+    scaled = seconds * duration_seconds / STORY_DURATION_SECONDS
     return max(1, int(round(1 + scaled * fps)))
+
+
+def create_bezier_camera_path(
+    name: str,
+    points: list[Vector],
+    collection: bpy.types.Collection,
+) -> bpy.types.Object:
+    curve = bpy.data.curves.new(name, "CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 18
+    curve.render_resolution_u = 24
+    spline = curve.splines.new("BEZIER")
+    spline.bezier_points.add(len(points) - 1)
+    for bezier_point, point in zip(spline.bezier_points, points):
+        bezier_point.co = point
+        try:
+            bezier_point.handle_left_type = "AUTO_CLAMPED"
+            bezier_point.handle_right_type = "AUTO_CLAMPED"
+        except TypeError:
+            bezier_point.handle_left_type = "AUTO"
+            bezier_point.handle_right_type = "AUTO"
+    obj = bpy.data.objects.new(name, curve)
+    link_to_collection(obj, collection)
+    obj.hide_viewport = True
+    obj.hide_render = True
+    obj["continuous_camera_path"] = True
+    return obj
+
+
+def bezier_path_control_progress(path: bpy.types.Object, samples_per_segment: int = 48) -> list[float]:
+    """Return arc-length-normalized Follow Path factors for each Bézier control point."""
+    bpy.context.view_layer.update()
+    spline = path.data.splines[0]
+    points = spline.bezier_points
+    if len(points) < 2:
+        return [0.0]
+    cumulative = [0.0]
+    total = 0.0
+    for index in range(len(points) - 1):
+        current = points[index]
+        following = points[index + 1]
+        p0 = current.co.copy()
+        p1 = current.handle_right.copy()
+        p2 = following.handle_left.copy()
+        p3 = following.co.copy()
+        previous = p0
+        segment_length = 0.0
+        for sample in range(1, samples_per_segment + 1):
+            t = sample / samples_per_segment
+            omt = 1.0 - t
+            point = omt**3 * p0 + 3.0 * omt**2 * t * p1 + 3.0 * omt * t**2 * p2 + t**3 * p3
+            segment_length += (point - previous).length
+            previous = point
+        total += segment_length
+        cumulative.append(total)
+    if total <= 1e-9:
+        return [index / (len(points) - 1) for index in range(len(points))]
+    return [distance / total for distance in cumulative]
+
+
+def create_camera_bracket(
+    name: str,
+    camera: bpy.types.Object,
+    x: float,
+    y_bottom: float,
+    y_top: float,
+    z: float,
+    mat: bpy.types.Material,
+    collection: bpy.types.Collection,
+    start: int,
+    end: int,
+) -> bpy.types.Object:
+    tick = 0.42
+    points = [
+        Vector((x - tick, y_top, z)),
+        Vector((x, y_top, z)),
+        Vector((x, y_bottom, z)),
+        Vector((x - tick, y_bottom, z)),
+    ]
+    obj = create_curve_object(name, points, 0.018, mat, collection)
+    obj.parent = camera
+    animate_visibility_window(obj, start, end)
+    return obj
+
+
+def camera_plane_projection(camera: bpy.types.Object, world_point: Vector, plane_z: float) -> Vector:
+    local = camera.matrix_world.inverted() @ world_point
+    if abs(local.z) < 1e-8:
+        return Vector((0.0, 0.0, plane_z))
+    scale = plane_z / local.z
+    return Vector((local.x * scale, local.y * scale, plane_z))
+
+
+def create_animated_camera_pointer(
+    name: str,
+    camera: bpy.types.Object,
+    world_target: Vector,
+    label_endpoint: Vector,
+    plane_z: float,
+    mat: bpy.types.Material,
+    collection: bpy.types.Collection,
+    start: int,
+    end: int,
+) -> bpy.types.Object:
+    scene = bpy.context.scene
+    scene.frame_set(start)
+    target_endpoint = camera_plane_projection(camera, world_target, plane_z)
+    obj = create_curve_object(name, [label_endpoint, target_endpoint], 0.018, mat, collection)
+    obj.parent = camera
+    animate_visibility_window(obj, start, end)
+    target_point = obj.data.splines[0].points[1]
+    for frame in range(start, end + 1):
+        scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        projected = camera_plane_projection(camera, world_target, plane_z)
+        target_point.co = (*projected, 1.0)
+        target_point.keyframe_insert(data_path="co", frame=frame)
+    scene.frame_set(start)
+    return obj
+
+
+def camera_pointer_projection_validation(
+    pointer: bpy.types.Object,
+    camera: bpy.types.Object,
+    world_target: Vector,
+    start: int,
+    end: int,
+) -> dict:
+    scene = bpy.context.scene
+    point = pointer.data.splines[0].points[1]
+    max_error = 0.0
+    max_error_frame = start
+    for frame in range(start, end + 1):
+        scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        actual_world = pointer.matrix_world @ Vector(point.co[:3])
+        actual = world_to_camera_view(scene, camera, actual_world)
+        expected = world_to_camera_view(scene, camera, world_target)
+        error = math.hypot(actual.x - expected.x, actual.y - expected.y)
+        if error > max_error:
+            max_error = error
+            max_error_frame = frame
+    scene.frame_set(start)
+    return {
+        "frames_sampled": end - start + 1,
+        "maximum_normalized_viewport_error": max_error,
+        "maximum_error_frame": max_error_frame,
+        "threshold": 0.01,
+        "passed": max_error <= 0.01,
+    }
+
+
+def set_material_emission(mat: bpy.types.Material, frame: int, strength: float) -> bool:
+    bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.use_nodes and mat.node_tree else None
+    if bsdf is None or "Emission Strength" not in bsdf.inputs:
+        return False
+    emission = bsdf.inputs["Emission Strength"]
+    emission.default_value = strength
+    emission.keyframe_insert(data_path="default_value", frame=frame)
+    return True
+
+
+def animate_emission_window(mat: bpy.types.Material, start: int, end: int, peak: float, fade: int = 8) -> bool:
+    start = max(1, start)
+    end = max(start + 2, end)
+    midpoint = start + (end - start) // 2
+    keyed = False
+    for frame, strength in [
+        (max(1, start - fade), 0.0),
+        (start, 0.0),
+        (midpoint, peak),
+        (end, 0.0),
+        (end + fade, 0.0),
+    ]:
+        keyed = set_material_emission(mat, frame, strength) or keyed
+    return keyed
+
+
+def pulse_asset_emission(
+    asset_name: str,
+    component: str,
+    start: int,
+    end: int,
+    peak: float,
+) -> dict:
+    object_names = []
+    material_names = []
+    for obj in mesh_objects_for_asset(asset_name):
+        if obj.get("component") != component:
+            continue
+        object_names.append(obj.name)
+        for index, source in enumerate(list(obj.data.materials)):
+            if source is None:
+                continue
+            clone = source.copy()
+            clone.name = f"Animation_emission_{asset_name}_{component}_{index}"
+            clone.animation_data_clear()
+            bsdf = clone.node_tree.nodes.get("Principled BSDF") if clone.use_nodes and clone.node_tree else None
+            if bsdf is not None:
+                base_color = bsdf.inputs.get("Base Color")
+                emission_color = bsdf.inputs.get("Emission Color") or bsdf.inputs.get("Emission")
+                if base_color is not None and emission_color is not None:
+                    emission_color.default_value = base_color.default_value
+            obj.data.materials[index] = clone
+            if animate_emission_window(clone, start, end, peak):
+                material_names.append(clone.name)
+    if not object_names or not material_names:
+        raise RuntimeError(f"Could not create source-mesh emission pulse for {asset_name!r} component {component!r}")
+    return {
+        "asset": asset_name,
+        "component": component,
+        "objects": object_names,
+        "materials": material_names,
+        "start_frame": start,
+        "end_frame": end,
+        "peak_emission": peak,
+    }
+
+
+def set_animation_interpolation() -> None:
+    for action in bpy.data.actions:
+        fcurves = getattr(action, "fcurves", None)
+        if fcurves is None:
+            continue
+        for fcurve in fcurves:
+            discrete = "hide_viewport" in fcurve.data_path or "hide_render" in fcurve.data_path
+            for keyframe in fcurve.keyframe_points:
+                if discrete:
+                    keyframe.interpolation = "CONSTANT"
+                    continue
+                keyframe.interpolation = "BEZIER"
+                keyframe.handle_left_type = "AUTO_CLAMPED"
+                keyframe.handle_right_type = "AUTO_CLAMPED"
+
+
+def camera_motion_continuity(
+    camera: bpy.types.Object,
+    target: bpy.types.Object,
+    frame_start: int,
+    frame_end: int,
+    duration_seconds: float,
+    fps: int,
+    moving_end_frame: int | None = None,
+) -> dict:
+    scene = bpy.context.scene
+    previous_location = None
+    previous_target = None
+    previous_direction = None
+    max_camera_step = 0.0
+    max_target_step = 0.0
+    max_angular_step = 0.0
+    max_camera_step_frame = frame_start
+    max_target_step_frame = frame_start
+    max_angular_step_frame = frame_start
+    max_angular_step_camera = None
+    max_angular_step_target = None
+    max_angular_step_distance = None
+    non_finite_frames = []
+    stationary_runs = []
+    stationary_start = None
+    stationary_epsilon = 1e-5
+    for frame in range(frame_start, frame_end + 1):
+        scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        location = camera.matrix_world.translation.copy()
+        focus = target.matrix_world.translation.copy()
+        values = (*location, *focus)
+        if not all(math.isfinite(float(value)) for value in values):
+            non_finite_frames.append(frame)
+            continue
+        direction = (focus - location).normalized()
+        if previous_location is not None:
+            camera_step = (location - previous_location).length
+            target_step = (focus - previous_target).length
+            angular_step = math.degrees(previous_direction.angle(direction))
+            if camera_step > max_camera_step:
+                max_camera_step = camera_step
+                max_camera_step_frame = frame
+            if target_step > max_target_step:
+                max_target_step = target_step
+                max_target_step_frame = frame
+            if angular_step > max_angular_step:
+                max_angular_step = angular_step
+                max_angular_step_frame = frame
+                max_angular_step_camera = [location.x, location.y, location.z]
+                max_angular_step_target = [focus.x, focus.y, focus.z]
+                max_angular_step_distance = (focus - location).length
+            if (moving_end_frame is None or frame <= moving_end_frame) and camera_step <= stationary_epsilon:
+                stationary_start = stationary_start or frame - 1
+            elif stationary_start is not None:
+                if frame - stationary_start >= 3:
+                    stationary_runs.append({"start_frame": stationary_start, "end_frame": frame - 1})
+                stationary_start = None
+        previous_location = location
+        previous_target = focus
+        previous_direction = direction
+    if stationary_start is not None and frame_end + 1 - stationary_start >= 3:
+        stationary_runs.append({"start_frame": stationary_start, "end_frame": min(frame_end, moving_end_frame or frame_end)})
+    scene.frame_set(frame_start)
+    time_scale = STORY_DURATION_SECONDS / max(duration_seconds, 1e-6)
+    fps_scale = 24.0 / max(float(fps), 1.0)
+    camera_threshold = 6.0 * time_scale * fps_scale
+    target_threshold = 4.0 * time_scale * fps_scale
+    angular_threshold = 9.0 * time_scale * fps_scale
+    constraint_types = [constraint.type for constraint in camera.constraints]
+    failures = []
+    if non_finite_frames:
+        failures.append({"reason": "non_finite_camera_transform", "frames": non_finite_frames[:20]})
+    if max_camera_step > camera_threshold:
+        failures.append({"reason": "camera_position_discontinuity", "frame": max_camera_step_frame, "actual": max_camera_step, "maximum": camera_threshold})
+    if max_target_step > target_threshold:
+        failures.append({"reason": "camera_target_discontinuity", "frame": max_target_step_frame, "actual": max_target_step, "maximum": target_threshold})
+    if max_angular_step > angular_threshold:
+        failures.append({
+            "reason": "camera_rotation_discontinuity",
+            "frame": max_angular_step_frame,
+            "actual_degrees": max_angular_step,
+            "maximum_degrees": angular_threshold,
+            "camera_location_mm": max_angular_step_camera,
+            "target_location_mm": max_angular_step_target,
+            "camera_target_distance_mm": max_angular_step_distance,
+        })
+    if constraint_types != ["FOLLOW_PATH", "TRACK_TO"]:
+        failures.append({"reason": "unexpected_camera_constraints", "actual": constraint_types, "expected": ["FOLLOW_PATH", "TRACK_TO"]})
+    if stationary_runs:
+        failures.append({"reason": "stationary_camera_before_final_hold", "runs": stationary_runs})
+    return {
+        "sampled_frames": frame_end - frame_start + 1,
+        "single_camera": True,
+        "constraint_types": constraint_types,
+        "max_camera_step_mm": max_camera_step,
+        "max_camera_step_frame": max_camera_step_frame,
+        "max_target_step_mm": max_target_step,
+        "max_target_step_frame": max_target_step_frame,
+        "max_angular_step_degrees": max_angular_step,
+        "max_angular_step_frame": max_angular_step_frame,
+        "stationary_epsilon_mm": stationary_epsilon,
+        "stationary_runs_before_final_hold": stationary_runs,
+        "thresholds": {
+            "camera_step_mm": camera_threshold,
+            "target_step_mm": target_threshold,
+            "angular_step_degrees": angular_threshold,
+        },
+        "failures": failures,
+    }
 
 
 def configure_render(args: argparse.Namespace, frame_end: int, frames_dir: Path) -> None:
@@ -777,7 +1171,9 @@ def configure_render(args: argparse.Namespace, frame_end: int, frames_dir: Path)
     except TypeError:
         scene.render.engine = "BLENDER_EEVEE"
     if hasattr(scene, "eevee"):
-        scene.eevee.taa_render_samples = 20 if args.smoke_test else 96
+        render_samples = 20 if args.smoke_test else (40 if args.render_profile == "review" else 96)
+        volumetric_samples = 32 if args.smoke_test else (48 if args.render_profile == "review" else 80)
+        scene.eevee.taa_render_samples = render_samples
         for attr, value in [
             ("use_gtao", True),
             ("gtao_distance", 24.0),
@@ -790,7 +1186,7 @@ def configure_render(args: argparse.Namespace, frame_end: int, frames_dir: Path)
             ("use_raytracing", True),
             ("use_volumetric_lights", True),
             ("use_volumetric_shadows", True),
-            ("volumetric_samples", 32 if args.smoke_test else 80),
+            ("volumetric_samples", volumetric_samples),
             ("volumetric_sample_distribution", 0.62),
             ("volumetric_start", 0.1),
             ("volumetric_end", 700.0),
@@ -817,33 +1213,29 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
         "labels": scene_collection("Animation Labels"),
         "highlights": scene_collection("Animation Highlights"),
         "lights": scene_collection("Animation Lights"),
-        "caption_panels": scene_collection("Animation Caption Panels"),
         "atmosphere": scene_collection("Animation Atmosphere"),
     }
     mats = {
         "dna_highlight": material("anim_highlight_dna_blue", (0.05, 0.42, 1.0, 0.0), 0.0),
         "rna_highlight": material("anim_highlight_rna_orange", (1.0, 0.44, 0.08, 0.0), 0.0),
-        "protein_highlight": material("anim_highlight_protein_cyan", (0.05, 0.86, 1.0, 0.0), 0.0),
-        "actin_highlight": material("anim_highlight_actin_red", (1.0, 0.15, 0.08, 0.0), 0.0),
-        "compact_highlight": material("anim_highlight_compact_gold", (1.0, 0.78, 0.05, 0.0), 0.0),
-        "tf_pulse": material("anim_pulse_tf_green", (0.16, 1.0, 0.38, 0.0), 0.0),
-        "pol_pulse": material("anim_pulse_pol_cyan", (0.10, 0.88, 1.0, 0.0), 0.0),
-        "nucleosome_pulse": material("anim_pulse_nucleosome_violet", (0.74, 0.45, 1.0, 0.0), 0.0),
-        "mrna_pulse": material("anim_pulse_mrna_orange", (1.0, 0.52, 0.08, 0.0), 0.0),
-        "ribosome_pulse": material("anim_pulse_ribosome_gold", (1.0, 0.76, 0.20, 0.0), 0.0),
-        "trna_pulse": material("anim_pulse_trna_green", (0.38, 1.0, 0.68, 0.0), 0.0),
-        "actin_pulse": material("anim_pulse_actin_red", (1.0, 0.20, 0.10, 0.0), 0.0),
         "label": material("anim_label_soft_white", (0.94, 0.965, 1.0, 1.0), 0.34),
-        "caption_panel": material("anim_caption_panel_smoke", (0.015, 0.019, 0.026, 0.42), 0.0),
     }
     hidden_original_labels = hide_existing_text_labels()
     hidden_original_backdrops = hide_existing_backdrops()
+    hidden_original_overview_guides = hide_existing_overview_guides()
+    brightened_scale_objects = []
+    for obj in bpy.data.objects:
+        if obj.type != "CURVE" or not obj.name.startswith("scale_"):
+            continue
+        obj.data.materials.clear()
+        obj.data.materials.append(mats["label"])
+        brightened_scale_objects.append(obj.name)
     configure_view_settings()
     compositor_nodes = configure_compositor()
 
     duration = max(4.0, args.duration_seconds)
     fps = max(1, args.fps)
-    frame_end = frame_at(60.0, duration, fps)
+    frame_end = frame_at(STORY_DURATION_SECONDS, duration, fps)
 
     camera_data = bpy.data.cameras.new("Animation_Flythrough_Camera")
     camera_data.type = "PERSP"
@@ -859,207 +1251,401 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
     target.empty_display_type = "SPHERE"
     target.empty_display_size = 2.5
     link_to_collection(target, collections["camera"])
-    constraint = camera.constraints.new(type="TRACK_TO")
-    constraint.target = target
-    constraint.track_axis = "TRACK_NEGATIVE_Z"
-    constraint.up_axis = "UP_Y"
-    bpy.context.scene.camera = camera
-    camera.data.dof.focus_object = target
 
+    asset_locations = {asset["name"]: Vector(asset["location_mm"]) for asset in report.get("pdb_assets", [])}
+    expected_assets = [asset["name"] for asset in report.get("pdb_assets", [])]
     dna_center = bbox_center(report["dna"]["components"])
     compact_center = bbox_center(report["compact_mrna"]["components"])
-    actin = vector_from_report(report, "Actin protein")
-    ribosome = (vector_from_report(report, "Ribosome small subunit") + vector_from_report(report, "Ribosome large subunit")) * 0.5
-    pol = vector_from_report(report, "RNA polymerase II elongation complex")
-    nucleosome = vector_from_report(report, "Nucleosome")
-    tf_focus = vector_from_report(report, "p53 tetramer bound to DNA")
+    actin = asset_locations["Actin protein"]
+    ribosome = (asset_locations["Ribosome small subunit"] + asset_locations["Ribosome large subunit"]) * 0.5
     mrna_mid = point_at_fraction(mrna_points, 0.52)
-    rbp_focus = (
-        vector_from_report(report, "Pumilio RBP")
-        + vector_from_report(report, "MS2 coat protein MCP")
-        + vector_from_report(report, "Argonaute")
-        + vector_from_report(report, "Poly(A)-binding RBP")
-        + vector_from_report(report, "HuR-like RBP")
-    ) / 5.0
+    mrna_origin_focus = point_at_fraction(mrna_points, 0.06)
+    ribosome_approach_focus = point_at_fraction(mrna_points, 0.70)
+    ribosome_entry_focus = point_at_fraction(mrna_points, 0.82)
+    ribosome_start_focus = point_at_fraction(mrna_points, 0.87)
+    ribosome_exit_focus = point_at_fraction(mrna_points, 0.96)
     scene_center = (dna_center + compact_center + actin + ribosome + mrna_mid) / 5.0
     lighting_objects = configure_cinematic_lighting(collections["lights"], camera, scene_center)
     atmosphere = create_volumetric_atmosphere(
         collections["atmosphere"],
-        [*dna_points, *mrna_points, dna_center, compact_center, actin, ribosome, pol, nucleosome, tf_focus, mrna_mid, rbp_focus],
+        [
+            *dna_points,
+            *mrna_points,
+            dna_center,
+            compact_center,
+            actin,
+            ribosome,
+            *asset_locations.values(),
+            mrna_mid,
+            ribosome_approach_focus,
+            ribosome_entry_focus,
+            ribosome_start_focus,
+            ribosome_exit_focus,
+        ],
         density=0.003,
     )
 
-    top_down = (scene_center + Vector((-18.0, -44.0, 205.0)), scene_center + Vector((0.0, -2.0, -5.0)), 20.0, 11.0)
-    overview = (dna_center + Vector((-52.0, -118.0, 126.0)), scene_center + Vector((2.0, -7.0, 8.0)), 24.0, 8.0)
-    dna_entry = (point_at_fraction(dna_points, 0.06) + Vector((-31.0, -43.0, 34.0)), point_at_fraction(dna_points, 0.06), 34.0, 5.6)
-    tf_shot = (tf_focus + Vector((-11.5, -17.0, 9.8)), tf_focus, 84.0, 1.45)
-    pol_shot = (pol + Vector((-16.0, -21.0, 13.0)), pol, 84.0, 1.55)
-    nuc_rna = (nucleosome + Vector((-15.0, -22.0, 15.5)), (nucleosome + point_at_fraction(mrna_points, 0.12)) * 0.5, 42.0, 3.2)
-    mrna_wide = (mrna_mid + Vector((-78.0, -112.0, 88.0)), mrna_mid, 22.0, 8.5)
-    rbp_ribosome = ((rbp_focus + ribosome) * 0.5 + Vector((-24.0, -48.0, 38.0)), (rbp_focus + ribosome) * 0.5, 36.0, 3.5)
-    ribosome_shot = (ribosome + Vector((9.0, -30.0, 31.0)), ribosome, 82.0, 1.55)
-    actin_rise = ((ribosome + actin) * 0.5 + Vector((-11.0, -32.0, 46.0)), (ribosome + actin) * 0.5, 34.0, 3.0)
-    actin_shot = (actin + Vector((-9.5, -16.0, 11.0)), actin, 90.0, 1.35)
-
-    storyboard = [
-        (0.0, "top_down_scale", *top_down),
-        (6.0, "top_down_hold", *top_down),
-        (10.0, "overview_oblique", *overview),
-        (14.0, "dna_entry", *dna_entry),
-        (18.0, "tf_binding_closeup", *tf_shot),
-        (23.0, "tf_binding_hold", *tf_shot),
-        (27.0, "polymerase_closeup", *pol_shot),
-        (32.0, "polymerase_hold", *pol_shot),
-        (36.0, "nucleosome_to_rna", *nuc_rna),
-        (41.0, "full_mrna_zoomout", *mrna_wide),
-        (46.0, "full_mrna_hold", *mrna_wide),
-        (48.5, "rbp_to_ribosome", *rbp_ribosome),
-        (50.5, "ribosome_closeup", *ribosome_shot),
-        (52.5, "ribosome_hold", *ribosome_shot),
-        (53.5, "rise_to_actin", *actin_rise),
-        (55.0, "actin_closeup", *actin_shot),
-        (60.0, "actin_close_hold", *actin_shot),
+    dna_traversal_offset = Vector((-20.0, -32.0, 24.0))
+    mrna_traversal_offset = Vector((-22.0, -30.0, 24.0))
+    shots = {
+        "overview_start": (scene_center + Vector((-78.0, -168.0, 172.0)), scene_center + Vector((18.0, -2.0, 2.0)), 22.0, 10.0),
+        "overview_end": (scene_center + Vector((-74.0, -160.0, 168.0)), scene_center + Vector((16.0, -1.0, 2.0)), 23.0, 9.5),
+        "r2r3_myb": (asset_locations["Transcription factor 4"] + dna_traversal_offset, asset_locations["Transcription factor 4"], 50.0, 3.4),
+        "cas9": (asset_locations["Cas9"] + dna_traversal_offset, asset_locations["Cas9"], 50.0, 3.2),
+        "zbtb24": (asset_locations["Transcription factor 1"] + dna_traversal_offset, asset_locations["Transcription factor 1"], 52.0, 3.0),
+        "p53": (asset_locations["p53 tetramer bound to DNA"] + dna_traversal_offset, asset_locations["p53 tetramer bound to DNA"], 64.0, 2.4),
+        "foxm1": (asset_locations["Transcription factor 3"] + dna_traversal_offset, asset_locations["Transcription factor 3"], 54.0, 2.8),
+        "pol": (asset_locations["RNA polymerase II elongation complex"] + dna_traversal_offset, asset_locations["RNA polymerase II elongation complex"], 64.0, 2.4),
+        "nucleosome": (asset_locations["Nucleosome"] + dna_traversal_offset, (asset_locations["Nucleosome"] + point_at_fraction(mrna_points, 0.10)) * 0.5, 52.0, 3.2),
+        "mrna_origin": (mrna_origin_focus + Vector((-18.0, -28.0, 24.0)), mrna_origin_focus, 56.0, 3.4),
+        "pum2": (asset_locations["Pumilio RBP"] + mrna_traversal_offset, asset_locations["Pumilio RBP"], 44.0, 3.0),
+        "pabp": (asset_locations["Poly(A)-binding RBP"] + mrna_traversal_offset, asset_locations["Poly(A)-binding RBP"], 44.0, 3.0),
+        "ms2": (asset_locations["MS2 coat protein MCP"] + mrna_traversal_offset, asset_locations["MS2 coat protein MCP"], 44.0, 3.0),
+        "mcherry": (asset_locations["mCherry/RFP tag"] + mrna_traversal_offset, asset_locations["mCherry/RFP tag"], 44.0, 3.0),
+        "argonaute": (asset_locations["Argonaute"] + mrna_traversal_offset, asset_locations["Argonaute"], 44.0, 3.0),
+        "hur": (asset_locations["HuR-like RBP"] + mrna_traversal_offset, asset_locations["HuR-like RBP"], 44.0, 3.0),
+        "ribosome_approach": (ribosome_approach_focus + mrna_traversal_offset, ribosome_approach_focus, 48.0, 3.2),
+        "ribosome_entry": (ribosome_entry_focus + mrna_traversal_offset, ribosome_entry_focus, 48.0, 3.2),
+        "ribosome_start": (ribosome_start_focus + mrna_traversal_offset, ribosome_start_focus, 48.0, 3.0),
+        "ribosome": (ribosome + mrna_traversal_offset, ribosome, 50.0, 3.0),
+        "ribosome_exit": (ribosome_exit_focus + mrna_traversal_offset, ribosome_exit_focus, 48.0, 3.2),
+        "compact": (compact_center + Vector((-8.0, -24.0, 20.0)), compact_center, 68.0, 2.4),
+        "actin": (actin + Vector((-9.5, -16.0, 11.0)), actin, 90.0, 1.6),
+    }
+    path_order = [
+        "overview_start",
+        "overview_end",
+        "r2r3_myb",
+        "cas9",
+        "zbtb24",
+        "p53",
+        "foxm1",
+        "pol",
+        "nucleosome",
+        "mrna_origin",
+        "pum2",
+        "pabp",
+        "ms2",
+        "mcherry",
+        "argonaute",
+        "hur",
+        "ribosome_approach",
+        "ribosome_entry",
+        "ribosome_start",
+        "ribosome",
+        "ribosome_exit",
+        "compact",
+        "actin",
     ]
+    camera_path = create_bezier_camera_path(
+        "Animation_Flythrough_Bezier_Path",
+        [shots[name][0] for name in path_order],
+        collections["camera"],
+    )
+    path_progresses = bezier_path_control_progress(camera_path)
+    camera.location = (0.0, 0.0, 0.0)
+    follow = camera.constraints.new(type="FOLLOW_PATH")
+    follow.target = camera_path
+    follow.use_fixed_location = True
+    follow.use_curve_follow = False
+    track = camera.constraints.new(type="TRACK_TO")
+    track.target = target
+    track.track_axis = "TRACK_NEGATIVE_Z"
+    track.up_axis = "UP_Y"
+    bpy.context.scene.camera = camera
+    camera.data.dof.focus_object = target
 
-    for seconds, _name, location, focus, lens, fstop in storyboard:
+    storyboard_specs = [
+        (0.0, "opening_overview_start", 0, "overview_start"),
+        (5.0, "opening_overview_glide", 1, "overview_end"),
+        (8.0, "r2r3_myb", 2, "r2r3_myb"),
+        (9.5, "cas9", 3, "cas9"),
+        (11.0, "zbtb24", 4, "zbtb24"),
+        (13.2, "p53_slow_pass", 5, "p53"),
+        (15.2, "foxm1_dbd", 6, "foxm1"),
+        (18.0, "rna_pol_ii_slow_pass", 7, "pol"),
+        (21.0, "nucleosome_rna_context", 8, "nucleosome"),
+        (24.0, "mrna_origin", 9, "mrna_origin"),
+        (26.0, "pum2", 10, "pum2"),
+        (28.0, "pabp", 11, "pabp"),
+        (30.0, "ms2", 12, "ms2"),
+        (32.0, "mcherry", 13, "mcherry"),
+        (35.0, "argonaute", 14, "argonaute"),
+        (39.0, "hur", 15, "hur"),
+        (41.0, "ribosome_approach", 16, "ribosome_approach"),
+        (43.0, "ribosome_entry", 17, "ribosome_entry"),
+        (45.0, "ribosome_slow_pass_start", 18, "ribosome_start"),
+        (47.0, "ribosome_center", 19, "ribosome"),
+        (49.0, "ribosome_slow_pass_exit", 20, "ribosome_exit"),
+        (52.0, "compact_mrna_pass", 21, "compact"),
+        (57.0, "actin_arrival", 22, "actin"),
+        (60.0, "actin_final_hold", 22, "actin"),
+    ]
+    storyboard = []
+    for seconds, name, path_index, shot_name in storyboard_specs:
+        location, focus, lens, fstop = shots[shot_name]
         frame = frame_at(seconds, duration, fps)
-        camera.location = location
+        progress = path_progresses[path_index]
+        follow.offset_factor = progress
         camera.data.lens = lens
         camera.data.dof.aperture_fstop = fstop
         target.location = focus
-        camera.keyframe_insert(data_path="location", frame=frame)
+        follow.keyframe_insert(data_path="offset_factor", frame=frame)
         camera.data.keyframe_insert(data_path="lens", frame=frame)
         camera.data.dof.keyframe_insert(data_path="aperture_fstop", frame=frame)
         target.keyframe_insert(data_path="location", frame=frame)
+        storyboard.append((seconds, name, progress, location, focus, lens, fstop))
 
     dna_highlight = create_curve_object("Animation_highlight_DNA_3954bp_path", dna_points, 0.18, mats["dna_highlight"], collections["highlights"])
     mrna_highlight = create_curve_object("Animation_highlight_mRNA_1852nt_path", mrna_points, 0.13, mats["rna_highlight"], collections["highlights"])
-    dna_highlight["educational_callout"] = "ACTB promoter + gene DNA; 3954 bp; 537.7 mm"
-    mrna_highlight["educational_callout"] = "actin mRNA; 1852 nt; 222.2 mm"
-    animate_material_window(mats["dna_highlight"], frame_at(5, duration, fps), frame_at(34, duration, fps), 0.72, 1.0)
-    animate_material_window(mats["rna_highlight"], frame_at(31, duration, fps), frame_at(58, duration, fps), 0.76, 1.0)
+    dna_highlight["educational_callout"] = "ACTB promoter + gene DNA; 3954 bp"
+    mrna_highlight["educational_callout"] = "actin mRNA; 1852 nt"
+    animate_material_window(mats["dna_highlight"], frame_at(5, duration, fps), frame_at(24, duration, fps), 0.64, 0.75)
+    animate_material_window(mats["rna_highlight"], frame_at(21, duration, fps), frame_at(52, duration, fps), 0.68, 0.85)
 
     highlight_objects = [dna_highlight.name, mrna_highlight.name]
-
-    pulse_specs = [
-        ("tf", "p53 tetramer bound to DNA", mats["tf_pulse"], 17, 24, tf_focus + Vector((-3.0, -6.0, 7.0)), 1150.0, 0.30, 1.8),
-        ("pol", "RNA polymerase II elongation complex", mats["pol_pulse"], 26, 33, pol + Vector((-5.0, -8.0, 6.0)), 1850.0, 0.22, 1.35),
-        ("nucleosome", "Nucleosome", mats["nucleosome_pulse"], 34, 38, nucleosome + Vector((-4.0, -6.0, 5.0)), 1100.0, 0.20, 1.25),
-        ("ribosome", "Ribosome large subunit", mats["ribosome_pulse"], 49, 54, ribosome + Vector((4.0, -10.0, 9.0)), 950.0, 0.045, 0.22),
-        ("trna", "Standalone tRNA", mats["trna_pulse"], 49, 54, vector_from_report(report, "Standalone tRNA") + Vector((1.0, -3.0, 4.0)), 420.0, 0.16, 0.7),
-        ("actin", "Actin protein", mats["actin_pulse"], 54, 60, actin + Vector((-2.0, -5.0, 4.0)), 1900.0, 0.24, 1.35),
+    emission_specs = [
+        ("p53 tetramer bound to DNA", "protein", 12.0, 14.2, 0.45),
+        ("RNA polymerase II elongation complex", "protein", 16.8, 19.2, 0.35),
+        ("Nucleosome", "protein", 19.4, 21.4, 0.30),
+        ("Ribosome small subunit", "protein", 45.0, 48.5, 0.10),
+        ("Ribosome large subunit", "protein", 45.0, 48.5, 0.10),
+        ("Standalone tRNA", "nucleic", 45.0, 48.5, 0.16),
+        ("Actin protein", "protein", 53.0, 57.0, 0.40),
     ]
-    pulse_overlay_objects = []
-    pulse_lights = []
-    for name, asset_name, mat, start, end, light_location, light_energy, peak_alpha, peak_emission in pulse_specs:
-        start_frame = frame_at(start, duration, fps)
-        end_frame = frame_at(end, duration, fps)
-        animate_material_window(mat, start_frame, end_frame, peak_alpha, peak_emission, fade=6)
-        for overlay in create_mesh_highlight_overlays(
+    emission_targets = [
+        pulse_asset_emission(
             asset_name,
-            f"Animation_pulse_{name}",
-            mat,
-            collections["highlights"],
+            component,
+            frame_at(start, duration, fps),
+            frame_at(end, duration, fps),
+            peak,
+        )
+        for asset_name, component, start, end, peak in emission_specs
+    ]
+
+    asset_label_specs = [
+        ("Transcription factor 4", "r2r3_myb", "R2R3 MYB", "r2r3_myb", -4.5, 3.4, 0.56, 7.3, 9.2),
+        ("Cas9", "cas9", "Cas9", "cas9", 4.5, 3.2, 0.56, 8.7, 10.5),
+        ("Transcription factor 1", "zbtb24", "ZBTB24", "zbtb24", -4.5, 3.4, 0.56, 10.0, 12.2),
+        ("p53 tetramer bound to DNA", "p53", "p53 tetramer", "p53", 4.5, 3.0, 0.56, 11.7, 14.4),
+        ("Transcription factor 3", "foxm1", "FOXM1-DBD", "foxm1", -4.5, 3.4, 0.56, 14.0, 16.5),
+        ("RNA polymerase II elongation complex", "rna_pol_ii", "RNA Pol II", "pol", 5.0, 3.4, 0.58, 16.3, 19.6),
+        ("Nucleosome", "nucleosome", "nucleosome", "nucleosome", -5.0, 3.4, 0.58, 19.1, 22.0),
+        ("Pumilio RBP", "pum2", "PUM2", "pum2", -5.0, 4.0, 0.60, 24.4, 27.2),
+        ("Poly(A)-binding RBP", "pabp", "PABP", "pabp", 5.0, 4.0, 0.60, 26.5, 29.2),
+        ("MS2 coat protein MCP", "ms2", "MS2 coat protein", "ms2", -5.0, 3.8, 0.56, 28.5, 31.2),
+        ("mCherry/RFP tag", "mcherry", "mCherry", "mcherry", 5.0, 3.8, 0.56, 30.5, 33.5),
+        ("Argonaute", "argonaute", "Argonaute", "argonaute", -5.0, 3.8, 0.58, 33.0, 37.2),
+        ("HuR-like RBP", "hur", "HuR", "hur", 5.0, 3.8, 0.58, 37.0, 40.8),
+        ("Ribosome small subunit", "ribosome_small", "ribosome small subunit", "ribosome", -6.5, 5.2, 0.50, 45.0, 48.0),
+        ("Ribosome large subunit", "ribosome_large", "ribosome large subunit", "ribosome", 6.0, 1.0, 0.50, 45.0, 48.0),
+        ("Standalone tRNA", "trna", "tRNA", "ribosome", 9.0, -5.0, 0.54, 45.0, 48.0),
+        ("Actin protein", "actin", "ACTB protein\n375 aa", "actin", 1.7, 1.2, 0.46, 54.0, 60.0),
+    ]
+    molecule_label_specs = [
+        ("dna", "ACTB promoter + gene DNA\n3,954 bp", point_at_fraction(dna_points, 0.03), "r2r3_myb", -6.0, 5.5, 0.82, 5.0, 8.0),
+        ("mrna", "Actin mRNA\n1,852 nt", mrna_origin_focus, "mrna_origin", 5.0, 4.0, 0.72, 21.0, 24.5),
+        ("compact", "compact mRNA", compact_center, "compact", -5.0, 2.2, 0.58, 49.0, 54.0),
+    ]
+    label_records = []
+    label_texts = []
+    asset_label_records = []
+    for asset_name, name, text, shot_name, screen_x, screen_y, size, start, end in asset_label_specs:
+        anchor = asset_locations[asset_name]
+        shot = shots[shot_name]
+        location = camera_plane_label_location(anchor, shot[0], shot[1], screen_x, screen_y)
+        start_frame = frame_at(start, duration, fps)
+        end_frame = max(start_frame, frame_at(end, duration, fps) - (0 if end >= STORY_DURATION_SECONDS else 1))
+        obj = create_label(
+            f"Animation_{name}",
+            text,
+            location,
+            size,
+            mats["label"],
+            collections["labels"],
+            camera,
             start_frame,
             end_frame,
-        ):
-            overlay["highlight_target"] = asset_name
-            pulse_overlay_objects.append(overlay.name)
-        beat_light = create_point_light(
-            f"Animation_Beat_Light_{name}",
-            light_location,
-            0.0,
-            tuple(mat.diffuse_color[:3]),
-            collections["lights"],
-            None,
-            16.0,
         )
-        animate_light_window(beat_light, start_frame, end_frame, light_energy, fade=8)
-        pulse_lights.append(beat_light.name)
-
-    animate_material_window(mats["mrna_pulse"], frame_at(39, duration, fps), frame_at(47, duration, fps), 0.32, 1.35, fade=8)
-    mrna_pulse = create_curve_object("Animation_pulse_full_mRNA_color_hold", mrna_points, 0.22, mats["mrna_pulse"], collections["highlights"])
-    animate_visibility_window(mrna_pulse, frame_at(39, duration, fps), frame_at(47, duration, fps))
-    pulse_overlay_objects.append(mrna_pulse.name)
-    highlight_objects.extend(pulse_overlay_objects)
-    lighting_objects.extend(pulse_lights)
-
-    label_specs = [
-        ("label_dna", "ACTB DNA\n3,954 bp / 537.7 mm", point_at_fraction(dna_points, 0.05) + Vector((-4.0, 5.0, 2.5)), 1.05, 8, 18),
-        ("label_tf", "p53 tetramer\nbound to DNA", tf_focus + Vector((2.6, 3.4, 2.1)), 0.48, 16, 25),
-        ("label_pol", "Pol II", pol + Vector((-6.0, -6.0, 4.2)), 0.30, 25, 35),
-        ("label_nucleosome", "nucleosome loop\nwrapped DNA", nucleosome + Vector((3.6, 3.6, 2.8)), 0.5, 33, 40),
-        ("label_mrna", "full actin mRNA\n1,852 nt / 222.2 mm", point_at_fraction(mrna_points, 0.48) + Vector((8.0, 6.0, 7.0)), 0.9, 38, 48),
-        ("label_rbps", "RNA-binding proteins\npost-transcriptional control", rbp_focus + Vector((8.0, 7.0, 5.0)), 0.78, 43, 51),
-        ("label_ribosome", "ribosome + tRNA\ntranslation", ribosome + Vector((6.0, 6.0, 5.0)), 0.52, 48, 55),
-        ("label_compact", "compact mRNP-like RNA\n10.5 x 8.0 x 3.4 mm envelope", compact_center + Vector((0.0, 7.0, 4.0)), 0.48, 53, 55),
-        ("label_actin", "actin protein\n2.7 x 1.8 x 2.1 mm", actin + Vector((3.4, 3.8, 2.4)), 0.36, 54, 60),
-    ]
-    labels = []
-    for name, text, location, size, start, end in label_specs:
-        labels.append(
-            create_label(
-                f"Animation_{name}",
-                text,
-                location,
-                size,
-                mats["label"],
-                collections["labels"],
-                camera,
-                frame_at(start, duration, fps),
-                frame_at(end, duration, fps),
-            ).name
+        leader = create_label_leader(
+            f"Animation_{name}_leader",
+            anchor,
+            location,
+            mats["label"],
+            collections["labels"],
+            start_frame,
+            end_frame,
         )
-    caption_specs = [
-        ("overview", "overall scale: DNA, mRNA, ribosome, actin", 0, 10),
-        ("dna", "ACTB DNA: 3,954 bp -> 537.7 mm", 8, 18),
-        ("tf", "transcription factor binds DNA", 16, 25),
-        ("pol", "RNA Pol II starts mRNA", 25, 35),
-        ("mrna", "full mRNA: 1,852 nt -> 222.2 mm", 38, 48),
-        ("ribosome", "translation: ribosome + tRNA", 48, 54),
-        ("actin", "actin endpoint: 2.7 x 1.8 x 2.1 mm", 54, 60),
-    ]
-    caption_panels = []
-    for name, text, start, end in caption_specs:
+        record = {
+            "object": obj.name,
+            "leader": leader.name,
+            "asset": asset_name,
+            "text": text,
+            "start_frame": start_frame,
+            "end_frame": end_frame,
+            "kind": "asset",
+        }
+        asset_label_records.append(record)
+        label_records.append(record)
+        label_texts.append(text)
+
+    for name, text, anchor, shot_name, screen_x, screen_y, size, start, end in molecule_label_specs:
+        shot = shots[shot_name]
+        location = camera_plane_label_location(anchor, shot[0], shot[1], screen_x, screen_y)
         start_frame = frame_at(start, duration, fps)
-        end_frame = frame_at(end, duration, fps)
-        caption_panels.append(
-            create_camera_panel(
-                f"Animation_caption_panel_{name}",
-                camera,
-                (0.0, -1.36, -18.0),
-                7.6,
-                0.95,
-                mats["caption_panel"],
-                collections["caption_panels"],
-                start_frame,
-                end_frame,
-            ).name
+        end_frame = max(start_frame, frame_at(end, duration, fps) - (0 if end >= STORY_DURATION_SECONDS else 1))
+        obj = create_label(
+            f"Animation_label_{name}",
+            text,
+            location,
+            size,
+            mats["label"],
+            collections["labels"],
+            camera,
+            start_frame,
+            end_frame,
         )
-        labels.append(
-            create_camera_label(
-                f"Animation_caption_{name}",
-                text,
-                camera,
-                (0.0, -1.40, -17.8),
-                0.21,
-                mats["label"],
-                collections["labels"],
-                start_frame,
-                end_frame,
-            ).name
+        record = {"object": obj.name, "text": text, "start_frame": start_frame, "end_frame": end_frame, "kind": "molecule"}
+        label_records.append(record)
+        label_texts.append(text)
+
+    scale_label_records = []
+    scale_label_end = max(1, frame_at(5.0, duration, fps) - 1)
+    for name, row in report.get("scale_bars", {}).items():
+        origin = Vector(row["origin_mm"])
+        location = origin + Vector((float(row["length_mm"]) + 2.4, 0.0, 0.4))
+        text = row["label"]
+        obj = create_label(
+            f"Animation_label_{name}",
+            text,
+            location,
+            1.90,
+            mats["label"],
+            collections["labels"],
+            camera,
+            1,
+            scale_label_end,
         )
+        obj.data.align_x = "LEFT"
+        record = {"object": obj.name, "text": text, "start_frame": 1, "end_frame": scale_label_end, "kind": "scale"}
+        scale_label_records.append(record)
+        label_records.append(record)
+        label_texts.append(text)
+
+    set_animation_interpolation()
+    overview_start = 1
+    overview_end = max(overview_start, frame_at(5.0, duration, fps) - 1)
+    overview_specs = [
+        ("mrna", "Actin mRNA — 1,852 nt", (5.25, 1.15, -18.0), 0.31, (4.75, -0.35, 2.65)),
+        ("dna", "ACTB promoter + gene DNA — 3,954 bp", (5.25, -3.15, -18.0), 0.27, (4.75, -4.45, -2.00)),
+    ]
+    overview_labels = []
+    protein_label = create_camera_label(
+        "Animation_overview_label_protein",
+        "ACTB protein — 375 aa",
+        camera,
+        (5.25, 4.05, -18.0),
+        0.31,
+        mats["label"],
+        collections["labels"],
+        overview_start,
+        overview_end,
+    )
+    protein_label.data.align_x = "LEFT"
+    protein_pointer = create_animated_camera_pointer(
+        "Animation_overview_pointer_protein",
+        camera,
+        actin,
+        Vector((4.85, 4.05, -18.0)),
+        -18.0,
+        mats["label"],
+        collections["labels"],
+        overview_start,
+        overview_end,
+    )
+    protein_row = {
+        "label": protein_label.name,
+        "pointer": protein_pointer.name,
+        "bracket": None,
+        "text": "ACTB protein — 375 aa",
+        "start_frame": overview_start,
+        "end_frame": overview_end,
+    }
+    overview_labels.append(protein_row)
+    label_records.append({"object": protein_label.name, "text": protein_row["text"], "start_frame": overview_start, "end_frame": overview_end, "kind": "overview"})
+    label_texts.append(protein_row["text"])
+    for name, text, local_location, size, bracket in overview_specs:
+        label = create_camera_label(
+            f"Animation_overview_label_{name}",
+            text,
+            camera,
+            local_location,
+            size,
+            mats["label"],
+            collections["labels"],
+            overview_start,
+            overview_end,
+        )
+        label.data.align_x = "LEFT"
+        bracket_obj = create_camera_bracket(
+            f"Animation_overview_bracket_{name}",
+            camera,
+            *bracket,
+            -18.0,
+            mats["label"],
+            collections["labels"],
+            overview_start,
+            overview_end,
+        )
+        row = {
+            "label": label.name,
+            "bracket": bracket_obj.name,
+            "pointer": None,
+            "text": text,
+            "start_frame": overview_start,
+            "end_frame": overview_end,
+        }
+        overview_labels.append(row)
+        label_records.append({"object": label.name, "text": text, "start_frame": overview_start, "end_frame": overview_end, "kind": "overview"})
+        label_texts.append(text)
 
     configure_render(args, frame_end, frames_dir)
-    for action in bpy.data.actions:
-        fcurves = getattr(action, "fcurves", None)
-        if fcurves is None:
-            continue
-        for fcurve in fcurves:
-            for keyframe in fcurve.keyframe_points:
-                keyframe.interpolation = "BEZIER"
+    set_animation_interpolation()
+    actin_arrival_frame = frame_at(57.0, duration, fps)
+    motion_validation = camera_motion_continuity(camera, target, 1, frame_end, duration, fps, moving_end_frame=actin_arrival_frame)
+    if motion_validation["failures"]:
+        raise RuntimeError(f"Animation camera continuity validation failed: {motion_validation['failures']}")
+    moving_progresses = [progress for seconds, _name, progress, *_rest in storyboard if seconds <= 57.0]
+    non_increasing_progress = [
+        {"index": index, "previous": moving_progresses[index - 1], "actual": moving_progresses[index]}
+        for index in range(1, len(moving_progresses))
+        if moving_progresses[index] <= moving_progresses[index - 1]
+    ]
+    if non_increasing_progress:
+        raise RuntimeError(f"Camera path progress is not strictly increasing before the actin hold: {non_increasing_progress}")
+    labeled_assets = [record["asset"] for record in asset_label_records]
+    missing_asset_labels = sorted(set(expected_assets) - set(labeled_assets))
+    duplicate_asset_labels = sorted({name for name in labeled_assets if labeled_assets.count(name) > 1})
+    if missing_asset_labels or duplicate_asset_labels or len(labeled_assets) != 17:
+        raise RuntimeError(
+            f"Individual asset-label coverage failed: missing={missing_asset_labels}, duplicates={duplicate_asset_labels}, count={len(labeled_assets)}"
+        )
+    forbidden_grouped_labels = [text for text in label_texts if any(token in text for token in ("PUM2 + PABP", "Argonaute + HuR", "ribosome + tRNA"))]
+    if forbidden_grouped_labels:
+        raise RuntimeError(f"Grouped animation labels remain: {forbidden_grouped_labels}")
+    pointer_validation = camera_pointer_projection_validation(protein_pointer, camera, actin, overview_start, overview_end)
+    if not pointer_validation["passed"]:
+        raise RuntimeError(f"Actin overview pointer is not aligned: {pointer_validation}")
+    mm_text = [text for text in label_texts if "mm" in text.lower()]
+    if mm_text:
+        raise RuntimeError(f"Animation labels still contain millimeter dimensions: {mm_text}")
+    duplicate_glow_objects = [obj.name for obj in bpy.data.objects if obj.name.startswith("Animation_pulse_")]
+    if duplicate_glow_objects:
+        raise RuntimeError(f"Duplicate glow geometry remains in animation: {duplicate_glow_objects}")
 
     output_blend.parent.mkdir(parents=True, exist_ok=True)
+    bpy.context.preferences.filepaths.save_version = 0
     bpy.ops.wm.save_as_mainfile(filepath=str(output_blend))
 
     rendered_frames = 0
@@ -1079,38 +1665,64 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
         "rendered": rendered_frames > 0,
         "rendered_frames": rendered_frames,
         "duration_seconds": duration,
+        "story_duration_seconds": STORY_DURATION_SECONDS,
         "fps": fps,
         "frame_start": 1,
         "frame_end": frame_end,
         "resolution": [args.resolution_x, args.resolution_y],
+        "render_profile": args.render_profile,
         "smoke_test": bool(args.smoke_test),
         "camera": camera.name,
         "camera_type": camera.data.type,
         "target": target.name,
+        "camera_path": camera_path.name,
+        "camera_path_points": [[point.x, point.y, point.z] for point in [shots[name][0] for name in path_order]],
+        "camera_motion_continuity": motion_validation,
         "source_path_lengths_mm": {"dna": dna_length, "mrna": mrna_length},
         "storyboard": [
             {
                 "story_seconds": seconds,
-                "timeline_seconds": round(seconds * duration / 60.0, 3),
+                "timeline_seconds": round(seconds * duration / STORY_DURATION_SECONDS, 3),
                 "frame": frame_at(seconds, duration, fps),
                 "name": name,
+                "path_progress": progress,
                 "camera_location_mm": [location.x, location.y, location.z],
                 "focus_mm": [focus.x, focus.y, focus.z],
                 "lens_mm": lens,
                 "dof_aperture_fstop": fstop,
             }
-            for seconds, name, location, focus, lens, fstop in storyboard
+            for seconds, name, progress, location, focus, lens, fstop in storyboard
         ],
-        "labels": labels,
-        "caption_panels": caption_panels,
+        "labels": label_records,
+        "scale_bar_labels": scale_label_records,
+        "brightened_scale_objects": brightened_scale_objects,
+        "overview_labels": overview_labels,
+        "overview_actin_pointer_validation": pointer_validation,
+        "individual_asset_labels": asset_label_records,
+        "individual_asset_label_coverage": {
+            "expected_count": len(expected_assets),
+            "actual_count": len(labeled_assets),
+            "expected_assets": expected_assets,
+            "labeled_assets": labeled_assets,
+            "missing": missing_asset_labels,
+            "duplicates": duplicate_asset_labels,
+            "passed": not missing_asset_labels and not duplicate_asset_labels and len(labeled_assets) == 17,
+        },
+        "path_progress_validation": {
+            "strictly_increasing_until_story_second": 57.0,
+            "non_increasing_steps": non_increasing_progress,
+            "passed": not non_increasing_progress,
+        },
+        "text_validation": {"millimeter_labels": mm_text, "passed": not mm_text},
+        "actin_hold_seconds": round(3.0 * duration / STORY_DURATION_SECONDS, 3),
+        "emission_targets": emission_targets,
         "lighting_objects": lighting_objects,
         "atmosphere_object": atmosphere.name,
         "atmosphere_density": atmosphere["atmosphere_density"],
         "compositor_nodes": compositor_nodes,
-        "pulse_overlay_objects": pulse_overlay_objects,
-        "pulse_lights": pulse_lights,
         "hidden_original_labels": hidden_original_labels,
         "hidden_original_backdrops": hidden_original_backdrops,
+        "hidden_original_overview_guides": hidden_original_overview_guides,
         "highlight_objects": highlight_objects,
     }
 
@@ -1121,15 +1733,22 @@ def main() -> None:
     args.source_report = as_path(args.source_report)
     args.output_dir = as_path(args.output_dir)
     if args.smoke_test:
+        args.render_profile = "smoke"
         args.duration_seconds = min(args.duration_seconds, 8.0)
         args.fps = min(args.fps, 6)
         args.resolution_x = min(args.resolution_x, 640)
         args.resolution_y = min(args.resolution_y, 360)
 
     output_blend = as_path(args.output_blend) if args.output_blend else args.output_dir / "v5_flythrough_animation.blend"
-    output_mp4 = as_path(args.output_mp4) if args.output_mp4 else args.output_dir / ("v5_flythrough_animation_smoke.mp4" if args.smoke_test else "v5_flythrough_animation_1080p.mp4")
+    default_mp4 = {
+        "smoke": "v5_flythrough_animation_smoke.mp4",
+        "review": "v5_flythrough_animation_review.mp4",
+        "final": "v5_flythrough_animation_1080p.mp4",
+    }[args.render_profile]
+    output_mp4 = as_path(args.output_mp4) if args.output_mp4 else args.output_dir / default_mp4
     report_path = args.output_dir / "v5_flythrough_animation_report.json"
-    frames_dir = args.output_dir / ("frames_smoke" if args.smoke_test else "frames")
+    default_frames_dir = {"smoke": "frames_smoke", "review": "frames_review", "final": "frames"}[args.render_profile]
+    frames_dir = as_path(args.frames_dir) if args.frames_dir else args.output_dir / default_frames_dir
 
     if not args.source_blend.exists():
         raise FileNotFoundError(f"Canonical V5 blend not found: {args.source_blend}")

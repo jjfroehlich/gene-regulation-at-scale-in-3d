@@ -939,7 +939,7 @@
       "source": "https://www.rcsb.org/structure/3G73",
       "path_anchor": {
         "path": "dna",
-        "fraction": 0.205,
+        "fraction": 0.115,
         "offset_mm": [
           0.0,
           0.0,
@@ -1051,7 +1051,7 @@
       "source": "https://www.rcsb.org/structure/1CVJ",
       "path_anchor": {
         "path": "mrna",
-        "fraction": 0.76,
+        "fraction": 0.24,
         "offset_mm": [
           0.0,
           0.0,
@@ -1105,7 +1105,7 @@
       "source": "https://www.rcsb.org/structure/4ED5",
       "path_anchor": {
         "path": "mrna",
-        "fraction": 0.64,
+        "fraction": 0.6,
         "offset_mm": [
           0.0,
           0.0,

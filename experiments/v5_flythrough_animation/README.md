@@ -1,8 +1,8 @@
 # V5 Flythrough Animation
 
-This experiment adds a short camera flight on top of the existing canonical V5 `.blend`. It does not change the canonical V5 scene builder.
+This experiment adds a continuous 60-second camera flight on top of the canonical V5 `.blend`.
 
-The current cut uses a perspective camera, keyed focal length, keyed depth of field, longer camera holds on important molecules, animated molecule color pulses, localized beat lights, soft key/rim lighting, subtle volumetric atmosphere, compositor glow/color grading, and camera captions so the wide scale shots and molecule close-ups read more like a guided scientific animation.
+The current cut uses one perspective camera on a continuous Bezier path, a separately animated look-at target, keyed focal length and depth of field, brief slowdowns without intermediate stops, emission pulses on the actual molecular surfaces, soft key/rim lighting, subtle volumetric atmosphere, compositor glow/color grading, individual molecule-attached labels, and canonical-style overview callouts.
 
 ## Run
 
@@ -18,22 +18,28 @@ Run a fast low-resolution smoke test:
 .\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -SmokeTest
 ```
 
+Render the full 60-second review cut at 960×540 and 12 fps before committing to the final 1080p pass:
+
+```powershell
+.\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -ReviewRender
+```
+
 Build the animation `.blend` and report without rendering video:
 
 ```powershell
 .\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -SkipVideoRender
 ```
 
-The default export is 60 seconds at 24 fps. Use `-DurationSeconds 75` for a slower version.
+The default export is 60 seconds at 24 fps. `-DurationSeconds` remains available to scale the complete storyboard proportionally. Render-frame directories are cleared before a fresh render and removed after successful encoding; add `-KeepFrames` when the PNG sequence is needed for diagnostics or re-encoding.
 
 ## Outputs
 
 Generated files are written under `experiments/v5_flythrough_animation/outputs/`, which is ignored by Git:
 
 - `v5_flythrough_animation.blend`
-- `v5_flythrough_animation_1080p.mp4`
-- `v5_flythrough_animation_smoke.mp4`
+- `v5_flythrough_animation_review.mp4`
 - `v5_flythrough_animation_report.json`
+- `review_contact_sheet.png`
 
 The tracked README preview is:
 
@@ -43,25 +49,28 @@ Full renders sample representative frames for the README GIF so the tracked prev
 
 ## Storyboard
 
-- `0-10s`: high top-down scale view with a longer hold on DNA, mRNA, ribosome, compact mRNP-like RNA, and actin.
-- `10-18s`: zoom into ACTB DNA and the 3,954 bp / 537.7 mm callout.
-- `18-25s`: close-up hold on the p53 tetramer bound to DNA, with green surface pulse and localized light.
-- `25-35s`: RNA polymerase II hold and nearby nucleosome context, with cyan/violet surface pulses.
-- `35-48s`: zoom out to the full 1,852 nt / 222.2 mm actin mRNA, with an orange full-path pulse and hold.
-- `48-54s`: RNA-binding proteins, ribosome, and tRNA translation region, with warm ribosome/tRNA pulse lighting.
-- `54-60s`: actin protein endpoint and compact structured-RNA reference, with a longer red actin pulse hold.
+- `0-5s`: moving full-scene overview with scale bars, DNA/mRNA brackets, and a direct pointer to actin.
+- `5-8s`: descend to the promoter.
+- `8-21s`: follow DNA past R2R3 MYB, Cas9, ZBTB24, p53, FOXM1-DBD, RNA Pol II, and the nucleosome.
+- `21-24s`: follow the transcription and mRNA-origin context.
+- `24-41s`: follow mRNA past PUM2, PABP, MS2, mCherry, Argonaute, and HuR.
+- `41-45s`: approach the ribosome.
+- `45-49s`: move slowly across the small subunit, large subunit, and tRNA without stopping.
+- `49-52s`: pass compact mRNA.
+- `52-57s`: arrive at actin.
+- `57-60s`: final actin hold.
 
 ## Visual Notes
 
 - Wide shots use 20-24 mm lenses and higher f-stop so the whole scale model remains legible.
-- TF, RNA Pol II, ribosome, and actin close-ups use 80-90 mm lenses and lower f-stop for stronger depth of field.
-- Important positions use duplicate camera keyframes so the camera eases into the view, pauses briefly, then continues.
-- Molecule emphasis uses animation-only overlay meshes and pulse lights; the canonical V5 materials are not modified.
+- Close-up focal lengths are eased per component, with wider traversal views used when multiple nearby structures must remain visible.
+- A single Bezier path with auto-clamped animation handles provides uninterrupted camera motion. Path progress remains strictly increasing until the final actin hold.
+- Molecule emphasis uses animation-local copies of the source objects' materials, so the actual protein or tRNA surface emits briefly without duplicate geometry or transform drift.
 - Earlier target-ring callouts were removed because the turquoise wireframe look distracted from the molecular surfaces.
-- The experiment copy hides the original static labels and adds animation-specific world labels plus camera captions.
-- The scene uses a warm area/sun key, cool fill, rim area/point lights, low-strength camera eye light, ambient occlusion, subtle volumetric fog, restrained bloom, compositor fog glow, and per-shot beat lights for readable molecular surfaces.
+- The experiment copy hides the original static labels and adds clean, PDB-ID-free labels and leaders for all 17 named structural assets. The overview retains DNA and mRNA brackets while the protein label points directly to actin. There is no bottom caption bar and no millimeter dimensions in animation text.
+- The scene uses a warm area/sun key, cool fill, rim area/point lights, low-strength camera eye light, ambient occlusion, subtle volumetric fog, restrained bloom, and compositor fog glow for readable molecular surfaces.
 - The compositor applies a restrained grade with cool shadows, warm highlights, and gentle saturation so labels and pulses pop without washing out the DNA/RNA scale paths.
-- Color coding is stable across the cut: DNA blue, RNA orange, transcription factor green, RNA Pol II cyan, nucleosome violet, ribosome gold, tRNA green, and actin red.
+- Emission pulses preserve each source surface's canonical color; DNA and RNA path emphasis remains blue and orange, and actin remains coral-red.
 
 ## Useful Blender References
 

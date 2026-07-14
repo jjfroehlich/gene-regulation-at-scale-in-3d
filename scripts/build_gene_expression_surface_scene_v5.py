@@ -108,7 +108,7 @@ PRIMARY_CALLOUTS = {
     "label_mRNA_v5": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
     "label_ACTB_primary_v5": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
 }
-COMPACT_CALLOUT = {"object": "label_compact_mrna_v5", "text": "mRNA compact", "offset": (0.025, 0.018)}
+COMPACT_CALLOUT = {"object": "label_compact_mrna_v5", "text": "mRNA compact", "offset": (0.014, 0.014)}
 DETAIL_TITLES = {
     "p53_dna": "p53 tetramer + DNA (3TS8)",
     "nucleosome_loop": "nucleosome core + wrapped DNA (1AOI)",
@@ -221,22 +221,22 @@ def add_v5_scale_bars(manifest: dict, collections: dict, materials: dict) -> dic
     protein_aa_contour_nm = float(units.get("protein_aa_contour_nm", PROTEIN_AA_CONTOUR_NM))
     bars = [
         {
-            "name": "scale_rna_100_nt",
-            "label": "RNA 100 nt",
-            "length_nm": 100.0 * float(units["mrna_nt_contour_nm"]),
-            "origin": (-82.0, -2.0, 0.0),
-            "quantity": 100,
-            "unit": "nt",
-            "basis": "single-stranded RNA contour length",
-        },
-        {
             "name": "scale_dna_100_bp",
             "label": "DNA 100 bp",
             "length_nm": 100.0 * float(units["dna_bp_rise_nm"]),
-            "origin": (-82.0, -7.0, 0.0),
+            "origin": (-82.0, -2.0, 0.0),
             "quantity": 100,
             "unit": "bp",
             "basis": "B-form DNA axial rise",
+        },
+        {
+            "name": "scale_rna_100_nt",
+            "label": "RNA 100 nt",
+            "length_nm": 100.0 * float(units["mrna_nt_contour_nm"]),
+            "origin": (-82.0, -7.0, 0.0),
+            "quantity": 100,
+            "unit": "nt",
+            "basis": "single-stranded RNA contour length",
         },
         {
             "name": "scale_protein_33_aa",
@@ -876,6 +876,22 @@ def _projected_object_bounds(camera: bpy.types.Object, label: bpy.types.Object) 
     )
 
 
+def _projected_objects_bounds(camera: bpy.types.Object, objects: list[bpy.types.Object]) -> tuple[float, float, float, float]:
+    inv = camera.matrix_world.inverted()
+    view_width, view_height = camera_view_dimensions(camera)
+    normalized = []
+    for obj in objects:
+        for point in renderable_object_corners(obj):
+            local = inv @ point
+            normalized.append((local.x / view_width + 0.5, local.y / view_height + 0.5))
+    if not normalized:
+        raise ValueError("Cannot project bounds for an empty object collection")
+    return (
+        min(point[0] for point in normalized), max(point[0] for point in normalized),
+        min(point[1] for point in normalized), max(point[1] for point in normalized),
+    )
+
+
 def _boxes_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float], pad: float = 0.006) -> bool:
     return not (a[1] + pad < b[0] or b[1] + pad < a[0] or a[3] + pad < b[2] or b[3] + pad < a[2])
 
@@ -990,6 +1006,19 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
             (molecule_box[1] + gap + half_width, molecule_box[2] - gap - half_height),
             (molecule_box[0] - gap - half_width, molecule_box[2] - gap - half_height),
         ]
+        for extra_gap in (gap + 0.012, gap + 0.024, gap + 0.036):
+            candidates.extend(
+                [
+                    (molecule_box[1] + extra_gap + half_width, anchor_norm[1]),
+                    (anchor_norm[0], molecule_box[3] + extra_gap + half_height),
+                    (molecule_box[0] - extra_gap - half_width, anchor_norm[1]),
+                    (anchor_norm[0], molecule_box[2] - extra_gap - half_height),
+                    (molecule_box[1] + extra_gap + half_width, molecule_box[3] + extra_gap + half_height),
+                    (molecule_box[0] - extra_gap - half_width, molecule_box[3] + extra_gap + half_height),
+                    (molecule_box[1] + extra_gap + half_width, molecule_box[2] - extra_gap - half_height),
+                    (molecule_box[0] - extra_gap - half_width, molecule_box[2] - extra_gap - half_height),
+                ]
+            )
         valid = []
         for candidate in candidates:
             box = _label_box(candidate, box_width, box_height)
@@ -1048,22 +1077,39 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
     compact_obj = bpy.data.objects.get(COMPACT_CALLOUT["object"])
     compact_row = None
     if compact_obj is not None:
-        compact_local = inv @ compact_obj.location
-        view_width, view_height = camera_view_dimensions(camera)
-        compact_anchor = (compact_local.x / view_width + 0.5, compact_local.y / view_height + 0.5)
-        compact_position = compact_anchor
+        compact_meshes = [
+            obj
+            for obj in bpy.data.objects
+            if obj.type == "MESH" and obj.name.startswith("actin mRNA compact")
+        ]
+        compact_bounds = _projected_objects_bounds(camera, compact_meshes)
+        compact_anchor = (compact_bounds[1], compact_bounds[3])
+        compact_position = (
+            compact_anchor[0] + COMPACT_CALLOUT["offset"][0],
+            compact_anchor[1] + COMPACT_CALLOUT["offset"][1],
+        )
+        label_box = (
+            compact_position[0], compact_position[0] + 0.060,
+            compact_position[1] - 0.010, compact_position[1] + 0.010,
+        )
+        compact_local = inv @ Vector(compact_obj.get("molecule_anchor_mm", compact_obj.location))
         compact_obj.data.body = COMPACT_CALLOUT["text"]
         compact_obj.data.align_x = "LEFT"
         compact_obj.data.align_y = "CENTER"
         compact_obj.data.size = 1.34
+        compact_obj.location = _camera_overlay_point(camera, *compact_position, compact_local.z + 1.2)
         compact_obj["overview_label_position"] = list(compact_position)
         compact_row = {
             "object": COMPACT_CALLOUT["object"],
             "text": COMPACT_CALLOUT["text"],
             "anchor_position": list(compact_anchor),
             "view_position": list(compact_position),
+            "offset": list(COMPACT_CALLOUT["offset"]),
+            "molecule_projected_bounds": list(compact_bounds),
+            "estimated_view_box": list(label_box),
+            "overlaps_molecule": _boxes_overlap(label_box, compact_bounds, pad=0.004),
             "leader": None,
-            "placement_space": "world_scene_original_location",
+            "placement_space": "world_scene_at_molecule_depth",
         }
 
     primary_rows = []
@@ -1530,10 +1576,15 @@ def validate_v5_report(report: dict) -> None:
         failures.append({"reason": "overview_label_collisions", "pairs": overview_labels.get("collision_pairs")})
     if overview_labels.get("molecule_overlap_pairs"):
         failures.append({"reason": "overview_label_overlaps_unrelated_molecule", "pairs": overview_labels.get("molecule_overlap_pairs")})
-    if float(overview_labels.get("maximum_displacement", 1.0)) > 0.085:
-        failures.append({"reason": "overview_label_too_far_from_molecule", "object": overview_labels.get("maximum_displacement_object"), "maximum_displacement": overview_labels.get("maximum_displacement"), "maximum_allowed": 0.085})
+    if float(overview_labels.get("maximum_displacement", 1.0)) > 0.11:
+        failures.append({"reason": "overview_label_too_far_from_molecule", "object": overview_labels.get("maximum_displacement_object"), "maximum_displacement": overview_labels.get("maximum_displacement"), "maximum_allowed": 0.11})
     if len(overview_labels.get("rows", [])) != len(report.get("pdb_assets", [])):
         failures.append({"reason": "missing_pdb_overview_labels", "actual": len(overview_labels.get("rows", [])), "expected": len(report.get("pdb_assets", []))})
+    compact_callout = overview_labels.get("compact_callout") or {}
+    if compact_callout.get("overlaps_molecule") is not False:
+        failures.append({"reason": "compact_mrna_label_overlaps_molecule", "callout": compact_callout})
+    if compact_callout.get("offset") != list(COMPACT_CALLOUT["offset"]):
+        failures.append({"reason": "wrong_compact_mrna_label_offset", "actual": compact_callout.get("offset"), "expected": list(COMPACT_CALLOUT["offset"])})
     origin_distance = (report.get("polymerase_rna_origin") or {}).get("distance_mm")
     if origin_distance is None:
         failures.append({"name": "RNA polymerase II elongation complex", "reason": "missing_polymerase_rna_origin"})
@@ -1557,8 +1608,8 @@ def validate_v5_report(report: dict) -> None:
     nm_to_mm = float(units.get("nm_to_mm", 0.4))
     protein_aa_contour_nm = float(units.get("protein_aa_contour_nm", PROTEIN_AA_CONTOUR_NM))
     required_scale_bars = {
-        "scale_rna_100_nt": 100.0 * float(units.get("mrna_nt_contour_nm", 0.3)) * nm_to_mm,
         "scale_dna_100_bp": 100.0 * float(units.get("dna_bp_rise_nm", 0.34)) * nm_to_mm,
+        "scale_rna_100_nt": 100.0 * float(units.get("mrna_nt_contour_nm", 0.3)) * nm_to_mm,
         "scale_protein_33_aa": 33.0 * protein_aa_contour_nm * nm_to_mm,
         "scale_10_nm": NANOMETER_SCALE_BAR_NM * nm_to_mm,
     }
@@ -1568,6 +1619,16 @@ def validate_v5_report(report: dict) -> None:
                 "reason": "wrong_v5_scale_bars",
                 "actual": sorted(scale_bars),
                 "expected": sorted(required_scale_bars),
+            }
+        )
+    actual_scale_bar_order = list(scale_bars)
+    expected_scale_bar_order = list(required_scale_bars)
+    if actual_scale_bar_order != expected_scale_bar_order:
+        failures.append(
+            {
+                "reason": "wrong_scale_bar_display_order",
+                "actual": actual_scale_bar_order,
+                "expected": expected_scale_bar_order,
             }
         )
     for name, expected_length in required_scale_bars.items():
@@ -1581,6 +1642,39 @@ def validate_v5_report(report: dict) -> None:
                     "expected_length_mm": expected_length,
                 }
             )
+    asset_reports = {item.get("name"): item for item in report.get("pdb_assets", [])}
+    requested_fractions = {
+        "Pumilio RBP": 0.20,
+        "Poly(A)-binding RBP": 0.24,
+        "Argonaute": 0.54,
+        "HuR-like RBP": 0.60,
+        "Ribosome large subunit": 0.89,
+        "Transcription factor 3": 0.115,
+        "Nucleosome": 0.165,
+    }
+    fractions = {}
+    for name, expected_fraction in requested_fractions.items():
+        attachment = (asset_reports.get(name) or {}).get("attachment_empty") or {}
+        fraction = attachment.get("fraction")
+        fractions[name] = fraction
+        if fraction is None or not math.isclose(float(fraction), expected_fraction, abs_tol=1e-6):
+            failures.append({"reason": "wrong_requested_path_anchor", "name": name, "actual": fraction, "expected": expected_fraction})
+    pabp = fractions.get("Poly(A)-binding RBP")
+    pumilio = fractions.get("Pumilio RBP")
+    hur = fractions.get("HuR-like RBP")
+    argonaute = fractions.get("Argonaute")
+    ribosome = fractions.get("Ribosome large subunit")
+    foxm1 = fractions.get("Transcription factor 3")
+    nucleosome = fractions.get("Nucleosome")
+    promoter_fraction = 500.0 / 3954.0
+    if pabp is not None and pumilio is not None and not float(pumilio) < float(pabp):
+        failures.append({"reason": "pabp_not_after_pumilio", "pumilio": pumilio, "pabp": pabp})
+    if hur is not None and argonaute is not None and ribosome is not None and not float(argonaute) < float(hur) < float(ribosome):
+        failures.append({"reason": "hur_not_between_argonaute_and_ribosome", "argonaute": argonaute, "hur": hur, "ribosome": ribosome})
+    if foxm1 is not None and not float(foxm1) < promoter_fraction:
+        failures.append({"reason": "foxm1_outside_promoter", "fraction": foxm1, "promoter_end_fraction": promoter_fraction})
+    if foxm1 is not None and nucleosome is not None and abs(float(nucleosome) - float(foxm1)) < 0.04:
+        failures.append({"reason": "foxm1_too_close_to_nucleosome", "foxm1": foxm1, "nucleosome": nucleosome, "minimum_fraction_gap": 0.04})
     if failures:
         raise RuntimeError(f"Canonical V5 validation failed: {failures}")
 
