@@ -35,7 +35,7 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
   <img src="docs/images/flythrough-preview.gif" alt="Educational flythrough animation preview">
 </p>
 
-## 2017 Poster
+## 2017 Collage
 
 This project builds on a collage I made in 2017.
 
