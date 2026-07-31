@@ -25,7 +25,7 @@ if (-not $SkipPyMolExport -and -not (Test-Path -LiteralPath $PyMolExe)) { throw 
 
 Push-Location $Root
 try {
-    Invoke-Checked "Write canonical V6 manifest" { & $PythonExe "scripts\write_canonical_v6_manifest.py" }
+    Invoke-Checked "Validate canonical manifest" { & $PythonExe "scripts\canonical_config.py" }
     if (-not $SkipFetch) {
         $fetchArgs = @("scripts\fetch_rcsb_assets.py", "--skip-mcp")
         if ($ForceDownload) { $fetchArgs += "--force" }
@@ -38,9 +38,9 @@ try {
     if (-not $SkipReduction) {
         Invoke-Checked "Reduce surface assets in Blender" { & $BlenderExe --background --python (Join-Path $Root "scripts\reduce_surface_assets.py") }
     }
-    $reportPath = Join-Path $Root "outputs\canonical\gene_expression_surface_scene_v6_report.json"
+    $reportPath = Join-Path $Root "outputs\canonical\gene_expression_surface_scene_report.json"
     if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath -Force }
-    Invoke-Checked "Build canonical V6 Blender scene" { & $BlenderExe --background --python (Join-Path $Root "scripts\build_gene_expression_surface_scene_v6.py") }
-    if (-not (Test-Path -LiteralPath $reportPath)) { throw "Canonical V6 report was not written: $reportPath" }
+    Invoke-Checked "Build canonical Blender scene" { & $BlenderExe --background --python (Join-Path $Root "scripts\build_gene_expression_surface_scene.py") }
+    if (-not (Test-Path -LiteralPath $reportPath)) { throw "Canonical report was not written: $reportPath" }
 }
 finally { Pop-Location }

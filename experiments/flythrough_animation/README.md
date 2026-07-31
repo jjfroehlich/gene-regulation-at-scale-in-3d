@@ -1,6 +1,6 @@
-# V5 Flythrough Animation
+# Flythrough Animation
 
-This experiment adds a continuous 60-second camera flight on top of the canonical V5 `.blend`.
+This experiment adds a continuous 66-second camera flight on top of the canonical `.blend`.
 
 The current cut uses one perspective camera on a continuous Bezier path, a separately animated look-at target, keyed focal length and depth of field, brief slowdowns without intermediate stops, emission pulses on the actual molecular surfaces, soft key/rim lighting, subtle volumetric atmosphere, compositor glow/color grading, individual molecule-attached labels, and canonical-style overview callouts.
 
@@ -9,56 +9,56 @@ The current cut uses one perspective camera on a continuous Bezier path, a separ
 Build the animation setup, render the MP4, and refresh the README GIF preview:
 
 ```powershell
-.\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1
+.\experiments\flythrough_animation\run_flythrough_animation.ps1
 ```
 
 Run a fast low-resolution smoke test:
 
 ```powershell
-.\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -SmokeTest
+.\experiments\flythrough_animation\run_flythrough_animation.ps1 -SmokeTest
 ```
 
-Render the full 60-second review cut at 960×540 and 12 fps before committing to the final 1080p pass:
+Render the full 66-second review cut at 960×540 and 12 fps before committing to the final 1080p pass:
 
 ```powershell
-.\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -ReviewRender
+.\experiments\flythrough_animation\run_flythrough_animation.ps1 -ReviewRender
 ```
 
 Build the animation `.blend` and report without rendering video:
 
 ```powershell
-.\experiments\v5_flythrough_animation\run_v5_flythrough_animation.ps1 -SkipVideoRender
+.\experiments\flythrough_animation\run_flythrough_animation.ps1 -SkipVideoRender
 ```
 
-The default export is 60 seconds at 24 fps. `-DurationSeconds` remains available to scale the complete storyboard proportionally. Render-frame directories are cleared before a fresh render and removed after successful encoding; add `-KeepFrames` when the PNG sequence is needed for diagnostics or re-encoding.
+The default export is 66 seconds at 24 fps. `-DurationSeconds` remains available to scale the complete storyboard proportionally. Render-frame directories are cleared before a fresh render and removed after successful encoding; add `-KeepFrames` when the PNG sequence is needed for diagnostics or re-encoding.
 
 ## Outputs
 
-Generated files are written under `experiments/v5_flythrough_animation/outputs/`, which is ignored by Git:
+Generated files are written under `experiments/flythrough_animation/outputs/`, which is ignored by Git:
 
-- `v5_flythrough_animation.blend`
-- `v5_flythrough_animation_review.mp4`
-- `v5_flythrough_animation_report.json`
+- `flythrough_animation.blend`
+- `flythrough_animation_review.mp4`
+- `flythrough_animation_report.json`
 - `review_contact_sheet.png`
 
 The tracked README preview is:
 
-- `docs/images/v5-flythrough-preview.gif`
+- `docs/images/flythrough-preview.gif`
 
-Full review renders use every source frame and play the tracked preview at 24 fps with a gentle 2x speed-up. The resulting 30-second, 280x158 GIF retains all 721 rendered frames for smooth motion while controlling file size through reduced dimensions and a 64-color palette. Smoke-test renders use the richer short preview directly.
+Full review renders use every source frame and play the tracked preview at 24 fps with a gentle 2x speed-up. The resulting 33-second, 280x158 GIF retains all 793 rendered frames for smooth motion while controlling file size through reduced dimensions and a 64-color palette. Smoke-test renders use the richer short preview directly.
 
 ## Storyboard
 
-- `0-5s`: moving full-scene overview with scale bars, DNA/mRNA brackets, and a direct pointer to actin.
+- `0-5s`: moving full-scene overview at the canonical lower oblique angle, with scale bars, DNA/mRNA brackets, and a direct pointer to actin.
 - `5-8s`: descend to the promoter.
-- `8-21s`: follow DNA past R2R3 MYB, Cas9, ZBTB24, p53, FOXM1-DBD, RNA Pol II, and the nucleosome.
-- `21-24s`: follow the transcription and mRNA-origin context.
-- `24-41s`: follow mRNA past PUM2, PABP, MS2, mCherry, Argonaute, and HuR.
-- `41-45s`: approach the ribosome.
-- `45-49s`: move slowly across the small subunit, large subunit, and tRNA without stopping.
-- `49-52s`: pass compact mRNA.
-- `52-57s`: arrive at actin.
-- `57-60s`: final actin hold.
+- `8-18s`: follow promoter-proximal DNA past R2R3 MYB, Cas9, ZBTB24, p53, FOXM1-DBD, and the nucleosome.
+- `18-27s`: traverse the downstream gene lanes and arrive at RNA Pol II on the final DNA coordinate.
+- `27-29s`: show Pol II with the attached nascent RNA 3′ end.
+- `29-46s`: follow mRNA past PUM2, PABP, MS2, mCherry, Argonaute, and HuR.
+- `46-54s`: approach and move across the ribosome and tRNA without stopping.
+- `54-57s`: pass compact mRNA.
+- `57-62s`: arrive at actin.
+- `62-66s`: final actin hold.
 
 ## Visual Notes
 

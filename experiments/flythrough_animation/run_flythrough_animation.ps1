@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$ScriptPath = Join-Path $PSScriptRoot "scripts\build_v6_flythrough_animation.py"
+$ScriptPath = Join-Path $PSScriptRoot "scripts\build_flythrough_animation.py"
 $GifFallbackScript = Join-Path $PSScriptRoot "scripts\build_readme_gif.py"
 $OutputDir = Join-Path $PSScriptRoot "outputs"
 if ($SmokeTest -and $ReviewRender) {
@@ -27,12 +27,12 @@ if ($ReviewRender) {
     if (-not $PSBoundParameters.ContainsKey("ResolutionY")) { $ResolutionY = 540 }
 }
 $RenderProfile = $(if ($SmokeTest) { "smoke" } elseif ($ReviewRender) { "review" } else { "final" })
-$VideoName = $(if ($SmokeTest) { "v6_flythrough_animation_smoke.mp4" } elseif ($ReviewRender) { "v6_flythrough_animation_review.mp4" } else { "v6_flythrough_animation_1080p.mp4" })
+$VideoName = $(if ($SmokeTest) { "flythrough_animation_smoke.mp4" } elseif ($ReviewRender) { "flythrough_animation_review.mp4" } else { "flythrough_animation_1080p.mp4" })
 $FramesDir = Join-Path $OutputDir $(if ($SmokeTest) { "frames_smoke" } elseif ($ReviewRender) { "frames_review" } else { "frames" })
 $VideoPath = Join-Path $OutputDir $VideoName
-$ReportPath = Join-Path $OutputDir "v6_flythrough_animation_report.json"
-$ReadmeGif = Join-Path $Root "docs\images\v6-flythrough-preview.gif"
-$BlendPath = Join-Path $OutputDir "v6_flythrough_animation.blend"
+$ReportPath = Join-Path $OutputDir "flythrough_animation_report.json"
+$ReadmeGif = Join-Path $Root "docs\images\flythrough-preview.gif"
+$BlendPath = Join-Path $OutputDir "flythrough_animation.blend"
 $BlendBackupPath = "${BlendPath}1"
 $ReviewContactSheet = Join-Path $OutputDir "review_contact_sheet.png"
 
@@ -88,7 +88,7 @@ try {
     if ($SkipVideoRender) {
         $blenderArgs += "--skip-video-render"
     }
-    Invoke-Checked "Build V6 flythrough animation" {
+    Invoke-Checked "Build flythrough animation" {
         & $BlenderExe @blenderArgs
     }
     if (Test-Path -LiteralPath $BlendBackupPath) {

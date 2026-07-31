@@ -740,12 +740,12 @@ def full_gene_serpentine_with_nucleosome_loop_controls(manifest: dict, config: d
     return full_gene_serpentine_nucleosome_layout(manifest, config)["controls"]
 
 
-def v5_reader_order_serpentine_nucleosome_layout(manifest: dict, config: dict) -> dict:
+def reader_order_serpentine_nucleosome_layout(manifest: dict, config: dict) -> dict:
     return full_gene_serpentine_nucleosome_layout(manifest, config, reader_order_serpentine_controls)
 
 
-def v5_reader_order_serpentine_with_nucleosome_loop_controls(manifest: dict, config: dict) -> list[tuple[float, float, float]]:
-    return v5_reader_order_serpentine_nucleosome_layout(manifest, config)["controls"]
+def reader_order_serpentine_with_nucleosome_loop_controls(manifest: dict, config: dict) -> list[tuple[float, float, float]]:
+    return reader_order_serpentine_nucleosome_layout(manifest, config)["controls"]
 
 
 def organic_dna_arc_controls(manifest: dict, config: dict) -> list[tuple[float, float, float]]:
@@ -793,11 +793,8 @@ def dna_controls(manifest: dict) -> list[tuple[float, float, float]]:
         return [tuple(point) for point in proxy.get("custom_controls_mm", [])]
     if proxy.get("path_mode") == "full_gene_serpentine_with_nucleosome_loop":
         return full_gene_serpentine_with_nucleosome_loop_controls(manifest, proxy.get("full_gene_serpentine", {}))
-    if proxy.get("path_mode") in {
-        "v5_reader_order_serpentine_with_nucleosome_loop",
-        "v6_reader_order_serpentine_with_nucleosome_loop",
-    }:
-        return v5_reader_order_serpentine_with_nucleosome_loop_controls(manifest, proxy.get("full_gene_serpentine", {}))
+    if proxy.get("path_mode") == "reader_order_serpentine_with_nucleosome_loop":
+        return reader_order_serpentine_with_nucleosome_loop_controls(manifest, proxy.get("full_gene_serpentine", {}))
     loop = proxy.get("nucleosome_loop", {})
     if loop.get("enabled", False):
         guide = nucleosome_loop_guide(manifest)
@@ -884,11 +881,8 @@ def dna_nucleosome_loop_report(manifest: dict) -> dict | None:
     if proxy.get("path_mode") == "full_gene_serpentine_with_nucleosome_loop":
         layout = full_gene_serpentine_nucleosome_layout(manifest, proxy.get("full_gene_serpentine", {}))
         guide_override = layout["loop_override"]
-    if proxy.get("path_mode") in {
-        "v5_reader_order_serpentine_with_nucleosome_loop",
-        "v6_reader_order_serpentine_with_nucleosome_loop",
-    }:
-        layout = v5_reader_order_serpentine_nucleosome_layout(manifest, proxy.get("full_gene_serpentine", {}))
+    if proxy.get("path_mode") == "reader_order_serpentine_with_nucleosome_loop":
+        layout = reader_order_serpentine_nucleosome_layout(manifest, proxy.get("full_gene_serpentine", {}))
         guide_override = layout["loop_override"]
     guide = nucleosome_loop_guide(manifest, guide_override)
     if guide is not None:
@@ -1541,7 +1535,7 @@ def build_mrna_model(manifest: dict) -> dict:
         report = mrna_report_from_segments(
             manifest,
             segment_models,
-            "canonical_v5_polymerase_origin_conical_spiral_mrna",
+            "canonical_polymerase_origin_conical_spiral_mrna",
             "deterministic_conical_spiral_tightening_to_top",
         )
         report["spiral"] = spiral_report

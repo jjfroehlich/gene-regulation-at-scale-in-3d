@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import blender_nucleic_meshes as direct_nucleic_meshes  # noqa: E402
 import scene_core as base  # noqa: E402
 import surface_assets as scene  # noqa: E402
-import canonical_v5_config as canonical  # noqa: E402
+import canonical_config as canonical  # noqa: E402
 import procedural_nucleic_geometry as nucleic_geometry  # noqa: E402
 
 
@@ -28,12 +28,12 @@ BLEND_PATH = canonical.BLEND_PATH
 PREVIEW_PATH = canonical.PREVIEW_PATH
 REPORT_PATH = canonical.REPORT_PATH
 DETAIL_PREVIEWS = {
-    "full_overview": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_full_overview.png",
-    "polymerase_rna_start": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_polymerase_rna_start.png",
-    "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_nucleosome_loop.png",
-    "p53_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_p53_dna.png",
-    "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_ribosome_trna.png",
-    "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_actin_product.png",
+    "full_overview": OUTPUT_DIR / "preview_gene_expression_surface_style_full_overview.png",
+    "polymerase_rna_start": OUTPUT_DIR / "preview_gene_expression_surface_style_polymerase_rna_start.png",
+    "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_nucleosome_loop.png",
+    "p53_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_p53_dna.png",
+    "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_ribosome_trna.png",
+    "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_actin_product.png",
 }
 
 STRICT_GUIDE_OFFSET_MAX_MM = 0.25
@@ -554,7 +554,6 @@ def main() -> None:
     report = {
         "title": manifest["title"],
         "kind": canonical.REPORT_KIND,
-        "canonical_version": "v5",
         "units": manifest["units"],
         "source_manifest": str(canonical.MANIFEST_PATH),
         "surface_asset_dir": str(scene.REDUCED_SURFACE_DIR),
@@ -612,4 +611,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    raise RuntimeError("contact_validation.py is a shared module; run run_canonical_v5_workflow.ps1")
+    raise RuntimeError("contact_validation.py is a shared module; run run_canonical_workflow.ps1")

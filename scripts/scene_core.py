@@ -773,9 +773,9 @@ def main() -> None:
     outputs = manifest.get(
         "legacy_outputs",
         {
-            "blend": "outputs/canonical/gene_expression_surface_style_v5.blend",
-            "preview": "outputs/canonical/preview_gene_expression_surface_style_v5.png",
-            "report": "outputs/canonical/gene_expression_surface_scene_v5_report.json",
+            "blend": "outputs/canonical/gene_expression_surface_style.blend",
+            "preview": "outputs/canonical/preview_gene_expression_surface_style.png",
+            "report": "outputs/canonical/gene_expression_surface_scene_report.json",
         },
     )
     blend_path = ROOT / outputs["blend"]
@@ -795,4 +795,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    raise RuntimeError("scene_core.py is a shared module; run run_canonical_v5_workflow.ps1")
+    raise RuntimeError("scene_core.py is a shared module; run run_canonical_workflow.ps1")

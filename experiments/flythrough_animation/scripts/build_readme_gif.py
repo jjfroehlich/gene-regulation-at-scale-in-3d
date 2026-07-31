@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a small README GIF fallback from existing tracked V6 stills."""
+"""Create a small README GIF fallback from the tracked canonical stills."""
 
 from __future__ import annotations
 
@@ -10,17 +10,17 @@ from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_OUTPUT = ROOT / "docs" / "images" / "v6-flythrough-preview.gif"
+DEFAULT_OUTPUT = ROOT / "docs" / "images" / "flythrough-preview.gif"
 DEFAULT_INPUTS = [
-    ROOT / "docs" / "images" / "v6-overview.jpg",
-    ROOT / "docs" / "images" / "v6-p53-dna.jpg",
-    ROOT / "docs" / "images" / "v6-transcription-end.jpg",
-    ROOT / "docs" / "images" / "v6-nucleosome-loop.jpg",
-    ROOT / "docs" / "images" / "v6-translation.jpg",
-    ROOT / "docs" / "images" / "v6-actin.jpg",
+    ROOT / "docs" / "images" / "overview.jpg",
+    ROOT / "docs" / "images" / "p53-dna.jpg",
+    ROOT / "docs" / "images" / "transcription-end.jpg",
+    ROOT / "docs" / "images" / "nucleosome-loop.jpg",
+    ROOT / "docs" / "images" / "translation.jpg",
+    ROOT / "docs" / "images" / "actin.jpg",
 ]
 CAPTIONS = [
-    "V6 flythrough: annotated canonical overview",
+    "Flythrough: annotated canonical overview",
     "p53 tetramer bound to DNA",
     "RNA polymerase II at the gene end and nascent RNA 3′ end",
     "Nucleosome loop on ACTB DNA",

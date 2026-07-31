@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the canonical V5 reader-order gene-expression scene."""
+"""Shared renderer for the canonical gene-expression scene."""
 
 from __future__ import annotations
 
@@ -22,27 +22,27 @@ import blender_nucleic_meshes as direct_nucleic_meshes  # noqa: E402
 import scene_core as base  # noqa: E402
 import surface_assets as scene  # noqa: E402
 import contact_validation as contact_helpers  # noqa: E402
-import canonical_v5_config as v5  # noqa: E402
+import canonical_config as canonical  # noqa: E402
 import procedural_nucleic_geometry as nucleic_geometry  # noqa: E402
 
 
-OUTPUT_DIR = v5.OUTPUT_DIR
-BLEND_PATH = v5.BLEND_PATH
-PREVIEW_PATH = v5.PREVIEW_PATH
-REPORT_PATH = v5.REPORT_PATH
+OUTPUT_DIR = canonical.OUTPUT_DIR
+BLEND_PATH = canonical.BLEND_PATH
+PREVIEW_PATH = canonical.PREVIEW_PATH
+REPORT_PATH = canonical.REPORT_PATH
 DETAIL_PREVIEWS = {
-    "full_overview": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_full_overview.png",
-    "p53_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_p53_dna.png",
-    "polymerase_rna_start": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_polymerase_rna_start.png",
-    "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_nucleosome_loop.png",
-    "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_ribosome_trna.png",
-    "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_actin_product.png",
-    "cas9_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_v5_cas9_dna.png",
+    "full_overview": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_full_overview.png",
+    "p53_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_p53_dna.png",
+    "polymerase_rna_start": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_polymerase_rna_start.png",
+    "nucleosome_loop": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_nucleosome_loop.png",
+    "ribosome_trna": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_ribosome_trna.png",
+    "actin_product": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_actin_product.png",
+    "cas9_dna": OUTPUT_DIR / "preview_gene_expression_surface_style_canonical_cas9_dna.png",
 }
 DETAIL_SHARED_ORTHO_SCALE_MM = 42.0
-PROTEIN_AA_CONTOUR_NM = v5.PROTEIN_AA_CONTOUR_NM
+PROTEIN_AA_CONTOUR_NM = canonical.PROTEIN_AA_CONTOUR_NM
 NANOMETER_SCALE_BAR_NM = 10.0
-V5_MATERIAL_COLORS = {
+Canonical_MATERIAL_COLORS = {
     # DNA keeps distinct promoter/exon/intron semantics.
     "dna_promoter_blue": (0.12, 0.36, 0.78, 1.0),
     "dna_exon_orange": (0.95, 0.62, 0.16, 1.0),
@@ -78,13 +78,13 @@ V5_MATERIAL_COLORS = {
     "scale_grey": (0.24, 0.25, 0.26, 1.0),
     "black": (0.02, 0.022, 0.025, 1.0),
 }
-V5_WORLD_COLOR = (0.94, 0.955, 0.97, 1.0)
-V5_BACKDROP_TOP_LEFT = (0.86, 0.925, 0.975, 1.0)
-V5_BACKDROP_TOP_RIGHT = (0.96, 0.985, 0.995, 1.0)
-V5_BACKDROP_BOTTOM_LEFT = (0.985, 0.945, 0.82, 1.0)
-V5_BACKDROP_BOTTOM_RIGHT = (1.0, 0.885, 0.74, 1.0)
-V5_LABEL_MATERIALS = {"black", "label_grey", "scale_grey"}
-V5_CYCLES_SAMPLES = 64
+Canonical_WORLD_COLOR = (0.94, 0.955, 0.97, 1.0)
+Canonical_BACKDROP_TOP_LEFT = (0.86, 0.925, 0.975, 1.0)
+Canonical_BACKDROP_TOP_RIGHT = (0.96, 0.985, 0.995, 1.0)
+Canonical_BACKDROP_BOTTOM_LEFT = (0.985, 0.945, 0.82, 1.0)
+Canonical_BACKDROP_BOTTOM_RIGHT = (1.0, 0.885, 0.74, 1.0)
+Canonical_LABEL_MATERIALS = {"black", "label_grey", "scale_grey"}
+Canonical_CYCLES_SAMPLES = 64
 OVERVIEW_LABEL_POSITIONS = {
     "label_Transcription factor 4": (0.36, 0.39),
     "label_Cas9": (0.46, 0.38),
@@ -104,11 +104,11 @@ OVERVIEW_LABEL_POSITIONS = {
     "label_Standalone tRNA": (0.78, 0.71),
 }
 PRIMARY_CALLOUTS = {
-    "label_DNA_v5": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.825, 0.29), "span": (0.16, 0.42)},
-    "label_mRNA_v5": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
-    "label_ACTB_primary_v5": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
+    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.825, 0.29), "span": (0.16, 0.42)},
+    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
+    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
 }
-COMPACT_CALLOUT = {"object": "label_compact_mrna_v5", "text": "mRNA compact", "offset": (0.014, 0.014)}
+COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.014, 0.014)}
 DETAIL_TITLES = {
     "p53_dna": "p53 tetramer + DNA (3TS8)",
     "nucleosome_loop": "nucleosome core + wrapped DNA (1AOI)",
@@ -139,12 +139,12 @@ def add_source_path_curve(name: str, path, collection, material) -> dict:
     }
 
 
-def build_v5_dna(manifest: dict, collections: dict, materials: dict) -> dict:
+def build_canonical_dna(manifest: dict, collections: dict, materials: dict) -> dict:
     path, report = direct_nucleic_meshes.build_dna_meshes(manifest, collections, materials)
-    report["source_curve"] = add_source_path_curve("V5_DNA_source_path", path, collections["DNA"], materials["black"])
+    report["source_curve"] = add_source_path_curve("Canonical_DNA_source_path", path, collections["DNA"], materials["black"])
     start = path.points[0]
     base.create_text(
-        "label_DNA_v5",
+        "label_DNA_canonical",
         "Actb promoter + gene DNA 3954 bp",
         (start.x + 4.0, start.y - 3.0, start.z + 0.25),
         1.55,
@@ -154,12 +154,12 @@ def build_v5_dna(manifest: dict, collections: dict, materials: dict) -> dict:
     return {"path": path, "report": report, "features": {"nucleosome_loop": report.get("nucleosome_loop")}}
 
 
-def build_v5_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
+def build_canonical_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
     path, report = direct_nucleic_meshes.build_mrna_meshes(manifest, collections, materials)
-    report["source_curve"] = add_source_path_curve("V5_mRNA_source_path", path, collections["mRNA"], materials["black"])
+    report["source_curve"] = add_source_path_curve("Canonical_mRNA_source_path", path, collections["mRNA"], materials["black"])
     start = path.points[0]
     base.create_text(
-        "label_mRNA_v5",
+        "label_mRNA_canonical",
         "Actb mRNA 1852 nt",
         (start.x + 3.0, start.y + 3.0, start.z + 0.3),
         1.55,
@@ -172,7 +172,7 @@ def build_v5_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
 def compact_positioned_manifest(manifest: dict, mrna_path) -> tuple[dict, dict]:
     adjusted = copy.deepcopy(manifest)
     mrna_end = Vector((mrna_path.points[-1].x, mrna_path.points[-1].y, mrna_path.points[-1].z))
-    actin = v5.asset_by_name(adjusted, "Actin protein")
+    actin = canonical.asset_by_name(adjusted, "Actin protein")
     actin_location = Vector(actin["location_mm"])
     center = mrna_end.lerp(actin_location, 0.55)
     adjusted["procedural_nucleic_acids"]["mrna"]["compact_center_mm"] = [center.x, center.y, center.z]
@@ -189,7 +189,7 @@ def place_actin_from_mrna_endpoint(manifest: dict, mrna_path) -> dict:
     endpoint = Vector((mrna_path.points[-1].x, mrna_path.points[-1].y, mrna_path.points[-1].z))
     offset = Vector((-6.4, 0.6, 27.0))
     location = endpoint + offset
-    actin = v5.asset_by_name(manifest, "Actin protein")
+    actin = canonical.asset_by_name(manifest, "Actin protein")
     actin.pop("path_anchor", None)
     actin["location_mm"] = [location.x, location.y, location.z]
     actin["label_text"] = "actin (1J6Z)"
@@ -201,11 +201,11 @@ def place_actin_from_mrna_endpoint(manifest: dict, mrna_path) -> dict:
     }
 
 
-def build_v5_compact_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
+def build_canonical_compact_mrna(manifest: dict, collections: dict, materials: dict) -> dict:
     path, report = direct_nucleic_meshes.build_compact_mrna_meshes(manifest, collections, materials)
     compact_center = contact_helpers.path_center(path)
     base.create_text(
-        "label_compact_mrna_v5",
+        "label_compact_mrna_canonical",
         "mRNA compact",
         (compact_center.x, compact_center.y + 3.2, compact_center.z + 0.35),
         1.45,
@@ -215,7 +215,7 @@ def build_v5_compact_mrna(manifest: dict, collections: dict, materials: dict) ->
     return {"path": path, "report": report, "center_mm": [compact_center.x, compact_center.y, compact_center.z]}
 
 
-def add_v5_scale_bars(manifest: dict, collections: dict, materials: dict) -> dict:
+def add_canonical_scale_bars(manifest: dict, collections: dict, materials: dict) -> dict:
     units = manifest["units"]
     nm_to_mm = float(units["nm_to_mm"])
     protein_aa_contour_nm = float(units.get("protein_aa_contour_nm", PROTEIN_AA_CONTOUR_NM))
@@ -309,7 +309,7 @@ def set_material_color(material: bpy.types.Material, color: tuple[float, float, 
     bsdf = material.node_tree.nodes.get("Principled BSDF")
     if bsdf:
         bsdf.inputs["Base Color"].default_value = color
-        label_material = material.name.split(".")[0] in V5_LABEL_MATERIALS
+        label_material = material.name.split(".")[0] in Canonical_LABEL_MATERIALS
         bsdf.inputs["Roughness"].default_value = 0.74 if label_material else 0.56
         bsdf.inputs["Metallic"].default_value = 0.0
         set_bsdf_input(bsdf, ("Specular IOR Level", "Specular"), 0.44 if not label_material else 0.22)
@@ -334,7 +334,7 @@ def set_color_management(view_transform: str, look: str | None = None) -> None:
             view_settings.look = look
 
 
-def configure_v5_beauty_render() -> dict:
+def configure_canonical_beauty_render() -> dict:
     scene_data = bpy.context.scene
     requested_engine = "CYCLES"
     engine_fallback_reason = None
@@ -350,7 +350,7 @@ def configure_v5_beauty_render() -> dict:
     cycles_settings = {}
     if scene_data.render.engine == "CYCLES":
         cycles = scene_data.cycles
-        cycles.samples = V5_CYCLES_SAMPLES
+        cycles.samples = Canonical_CYCLES_SAMPLES
         cycles.preview_samples = 24
         cycles.max_bounces = 6
         cycles.diffuse_bounces = 3
@@ -396,18 +396,18 @@ def configure_v5_beauty_render() -> dict:
 
     world = scene_data.world or bpy.data.worlds.new("World")
     scene_data.world = world
-    world.color = V5_WORLD_COLOR[:3]
+    world.color = Canonical_WORLD_COLOR[:3]
     world.use_nodes = True
     background = world.node_tree.nodes.get("Background")
     if background:
-        background.inputs["Color"].default_value = V5_WORLD_COLOR
+        background.inputs["Color"].default_value = Canonical_WORLD_COLOR
         background.inputs["Strength"].default_value = 0.52 if scene_data.render.engine == "CYCLES" else 0.48
     return {
         "requested_engine": requested_engine,
         "engine": scene_data.render.engine,
         "engine_fallback_reason": engine_fallback_reason,
         "resolution": [scene_data.render.resolution_x, scene_data.render.resolution_y],
-        "world_color": list(V5_WORLD_COLOR),
+        "world_color": list(Canonical_WORLD_COLOR),
         "world_strength": float(background.inputs["Strength"].default_value) if background else None,
         "cycles": cycles_settings,
         "taa_render_samples": int(scene_data.eevee.taa_render_samples),
@@ -436,7 +436,7 @@ def camera_space_renderable_bounds(camera_name: str, include_backdrop: bool = Fa
     for obj in bpy.data.objects:
         if obj.hide_render or obj.type in {"CAMERA", "LIGHT"}:
             continue
-        if obj.get("v5_beauty_backdrop") and not include_backdrop:
+        if obj.get("canonical_beauty_backdrop") and not include_backdrop:
             continue
         object_count += 1
         for point in renderable_object_corners(obj):
@@ -464,7 +464,7 @@ def camera_space_renderable_bounds(camera_name: str, include_backdrop: bool = Fa
     }
 
 
-def v5_beauty_collection(collections: dict[str, bpy.types.Collection]) -> bpy.types.Collection:
+def canonical_beauty_collection(collections: dict[str, bpy.types.Collection]) -> bpy.types.Collection:
     collection = collections.get("Beauty") or bpy.data.collections.get("Beauty")
     if collection is None:
         collection = bpy.data.collections.new("Beauty")
@@ -474,9 +474,9 @@ def v5_beauty_collection(collections: dict[str, bpy.types.Collection]) -> bpy.ty
     return collection
 
 
-def remove_existing_v5_beauty_objects() -> None:
+def remove_existing_canonical_beauty_objects() -> None:
     for obj in list(bpy.data.objects):
-        if obj.name == "large_softbox" or obj.get("v5_beauty_object"):
+        if obj.name == "large_softbox" or obj.get("canonical_beauty_object"):
             data = obj.data
             bpy.data.objects.remove(obj, do_unlink=True)
             if isinstance(data, bpy.types.Light) and data.users == 0:
@@ -514,19 +514,19 @@ def blend_rgba(
     return tuple(float(a + (b - a) * factor) for a, b in zip(left, right))
 
 
-def v5_backdrop_color(x_norm: float, y_norm: float) -> tuple[float, float, float, float]:
-    bottom = blend_rgba(V5_BACKDROP_BOTTOM_LEFT, V5_BACKDROP_BOTTOM_RIGHT, x_norm)
-    top = blend_rgba(V5_BACKDROP_TOP_LEFT, V5_BACKDROP_TOP_RIGHT, x_norm)
+def canonical_backdrop_color(x_norm: float, y_norm: float) -> tuple[float, float, float, float]:
+    bottom = blend_rgba(Canonical_BACKDROP_BOTTOM_LEFT, Canonical_BACKDROP_BOTTOM_RIGHT, x_norm)
+    top = blend_rgba(Canonical_BACKDROP_TOP_LEFT, Canonical_BACKDROP_TOP_RIGHT, x_norm)
     return blend_rgba(bottom, top, y_norm)
 
 
-def create_v5_backdrop(camera_name: str, collections: dict[str, bpy.types.Collection]) -> dict:
+def create_canonical_backdrop(camera_name: str, collections: dict[str, bpy.types.Collection]) -> dict:
     camera = bpy.data.objects[camera_name]
     bounds = camera_space_renderable_bounds(camera_name)
     if not bounds.get("available"):
         return {"created": False, "reason": "no_renderable_objects"}
 
-    collection = v5_beauty_collection(collections)
+    collection = canonical_beauty_collection(collections)
     view_width, view_height = camera_view_dimensions(camera)
     backdrop_width = view_width * 1.34
     backdrop_height = view_height * 1.44
@@ -548,12 +548,12 @@ def create_v5_backdrop(camera_name: str, collections: dict[str, bpy.types.Collec
             idx = row * (columns + 1) + column
             faces.append((idx, idx + 1, idx + columns + 2, idx + columns + 1))
 
-    mesh = bpy.data.meshes.new("v5_camera_gradient_backdrop_mesh")
+    mesh = bpy.data.meshes.new("canonical_camera_gradient_backdrop_mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
-    obj = bpy.data.objects.new("v5_camera_gradient_backdrop", mesh)
-    obj["v5_beauty_object"] = True
-    obj["v5_beauty_backdrop"] = True
+    obj = bpy.data.objects.new("canonical_camera_gradient_backdrop", mesh)
+    obj["canonical_beauty_object"] = True
+    obj["canonical_beauty_backdrop"] = True
     obj["camera_aligned_to"] = camera_name
     obj.hide_select = True
     collection.objects.link(obj)
@@ -563,7 +563,7 @@ def create_v5_backdrop(camera_name: str, collections: dict[str, bpy.types.Collec
         for column in range(columns):
             x_norm = (column + 0.5) / columns
             y_norm = (row + 0.5) / rows
-            mat = backdrop_material(f"v5_backdrop_gradient_{row:02d}_{column:02d}", v5_backdrop_color(x_norm, y_norm))
+            mat = backdrop_material(f"canonical_backdrop_gradient_{row:02d}_{column:02d}", canonical_backdrop_color(x_norm, y_norm))
             mesh.materials.append(mat)
             mesh.polygons[face_index].material_index = face_index
             face_index += 1
@@ -576,10 +576,10 @@ def create_v5_backdrop(camera_name: str, collections: dict[str, bpy.types.Collec
         "camera_local_z_mm": backdrop_z,
         "size_mm": [backdrop_width, backdrop_height],
         "palette": {
-            "top_left": list(V5_BACKDROP_TOP_LEFT),
-            "top_right": list(V5_BACKDROP_TOP_RIGHT),
-            "bottom_left": list(V5_BACKDROP_BOTTOM_LEFT),
-            "bottom_right": list(V5_BACKDROP_BOTTOM_RIGHT),
+            "top_left": list(Canonical_BACKDROP_TOP_LEFT),
+            "top_right": list(Canonical_BACKDROP_TOP_RIGHT),
+            "bottom_left": list(Canonical_BACKDROP_BOTTOM_LEFT),
+            "bottom_right": list(Canonical_BACKDROP_BOTTOM_RIGHT),
         },
     }
 
@@ -611,7 +611,7 @@ def create_area_light(
     light = bpy.data.objects.new(name, light_data)
     light.location = camera.matrix_world @ Vector(local_position)
     point_object_at(light, target)
-    light["v5_beauty_object"] = True
+    light["canonical_beauty_object"] = True
     collection.objects.link(light)
     return {
         "name": name,
@@ -624,9 +624,9 @@ def create_area_light(
     }
 
 
-def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types.Collection]) -> dict:
-    remove_existing_v5_beauty_objects()
-    collection = v5_beauty_collection(collections)
+def add_canonical_beauty_environment(camera_name: str, collections: dict[str, bpy.types.Collection]) -> dict:
+    remove_existing_canonical_beauty_objects()
+    collection = canonical_beauty_collection(collections)
     camera = bpy.data.objects[camera_name]
     bounds = camera_space_renderable_bounds(camera_name)
     if not bounds.get("available"):
@@ -645,7 +645,7 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
     rim_z = float(bounds["min_z"]) - 24.0
     lights = [
         create_area_light(
-            "v5_key_softbox",
+            "canonical_key_softbox",
             collection,
             camera,
             scene_center_world,
@@ -655,7 +655,7 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
             (1.0, 0.94, 0.84),
         ),
         create_area_light(
-            "v5_fill_softbox",
+            "canonical_fill_softbox",
             collection,
             camera,
             scene_center_world,
@@ -665,7 +665,7 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
             (0.84, 0.91, 1.0),
         ),
         create_area_light(
-            "v5_rim_softbox",
+            "canonical_rim_softbox",
             collection,
             camera,
             scene_center_world,
@@ -675,7 +675,7 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
             (0.78, 0.86, 1.0),
         ),
         create_area_light(
-            "v5_warm_wash",
+            "canonical_warm_wash",
             collection,
             camera,
             scene_center_world,
@@ -685,7 +685,7 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
             (1.0, 0.88, 0.74),
         ),
     ]
-    backdrop = create_v5_backdrop(camera_name, collections)
+    backdrop = create_canonical_backdrop(camera_name, collections)
     bpy.context.view_layer.update()
     return {
         "created": True,
@@ -697,18 +697,18 @@ def add_v5_beauty_environment(camera_name: str, collections: dict[str, bpy.types
     }
 
 
-def polish_v5_surface_rendering() -> dict:
+def polish_canonical_surface_rendering() -> dict:
     smoothed_meshes = []
     weighted_normal_meshes = []
     for obj in bpy.data.objects:
-        if obj.type != "MESH" or obj.hide_render or obj.get("v5_beauty_backdrop"):
+        if obj.type != "MESH" or obj.hide_render or obj.get("canonical_beauty_backdrop"):
             continue
         if obj.data and obj.data.polygons:
             for polygon in obj.data.polygons:
                 polygon.use_smooth = True
             smoothed_meshes.append(obj.name)
-        if obj.modifiers.get("v5_weighted_normals") is None:
-            modifier = obj.modifiers.new("v5_weighted_normals", "WEIGHTED_NORMAL")
+        if obj.modifiers.get("canonical_weighted_normals") is None:
+            modifier = obj.modifiers.new("canonical_weighted_normals", "WEIGHTED_NORMAL")
             modifier.keep_sharp = True
             modifier.weight = 50
             weighted_normal_meshes.append(obj.name)
@@ -721,9 +721,9 @@ def polish_v5_surface_rendering() -> dict:
     }
 
 
-def apply_v5_color_palette(materials: dict[str, bpy.types.Material]) -> dict:
+def apply_canonical_color_palette(materials: dict[str, bpy.types.Material]) -> dict:
     applied = {}
-    for name, color in V5_MATERIAL_COLORS.items():
+    for name, color in Canonical_MATERIAL_COLORS.items():
         material = materials.get(name)
         if material is None:
             material = bpy.data.materials.new(name)
@@ -769,7 +769,7 @@ def orient_labels_to_camera(camera_name: str, *, reveal: bool = True) -> dict:
         rows.append({"object": obj.name, "text": obj.data.body})
     bpy.context.view_layer.update()
     return {
-        "policy": "V5 text labels are billboarded to the active camera",
+        "policy": "Canonical text labels are billboarded to the active camera",
         "camera": camera_name,
         "oriented_label_count": len(rows),
         "rows": rows,
@@ -798,7 +798,7 @@ def fit_camera_to_renderables(camera_name: str, margin_fraction: float = 0.075) 
     else:
         required_ortho = max(width / aspect, height)
     camera.data.ortho_scale = required_ortho / usable
-    if camera_name == "Camera_v5_full_overview":
+    if camera_name == "Camera_canonical_full_overview":
         camera.data.ortho_scale *= 1.08
         gutter_shift = camera.matrix_world.to_3x3() @ Vector((float(camera.data.ortho_scale) * 0.065, 0.0, 0.0))
         camera.location += gutter_shift
@@ -850,7 +850,7 @@ def _camera_overlay_point(camera: bpy.types.Object, x_norm: float, y_norm: float
 
 def _remove_annotation_guides() -> None:
     for obj in list(bpy.data.objects):
-        if obj.get("v5_annotation_leader") or obj.get("v5_annotation_bracket") or obj.get("v5_label_backing"):
+        if obj.get("canonical_annotation_leader") or obj.get("canonical_annotation_bracket") or obj.get("canonical_label_backing"):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
@@ -933,7 +933,7 @@ def _create_label_backing(name: str, camera: bpy.types.Object, box, collections:
     obj = bpy.data.objects.new(name, mesh)
     collections["Labels"].objects.link(obj)
     obj.data.materials.append(_ensure_label_backing_material(materials))
-    obj["v5_label_backing"] = True
+    obj["canonical_label_backing"] = True
     return obj.name
 
 
@@ -961,7 +961,7 @@ def _create_group_bracket(
         collections["Labels"],
         resolution=1,
     )
-    bracket["v5_annotation_bracket"] = True
+    bracket["canonical_annotation_bracket"] = True
     return bracket.name
 
 
@@ -970,9 +970,9 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
     inv = camera.matrix_world.inverted()
     rows = []
     _remove_annotation_guides()
-    if bpy.data.objects.get("label_ACTB_primary_v5") is None:
+    if bpy.data.objects.get("label_ACTB_primary_canonical") is None:
         primary = base.create_text(
-            "label_ACTB_primary_v5", "ACTB protein 375 aa", (0.0, 0.0, 0.0), 1.55,
+            "label_ACTB_primary_canonical", "ACTB protein 375 aa", (0.0, 0.0, 0.0), 1.55,
             materials["black"], collections["Labels"], align="LEFT"
         )
         primary.rotation_euler = camera.rotation_euler
@@ -1175,7 +1175,7 @@ def _asset_report_location(asset_reports: list[dict], name: str) -> Vector:
     raise KeyError(f"Missing asset report for camera target: {name}")
 
 
-def add_v5_cameras(
+def add_canonical_cameras(
     manifest: dict,
     dna_path,
     mrna_path,
@@ -1199,43 +1199,43 @@ def add_v5_cameras(
 
     camera_names = {
         "full_overview": create_camera(
-            "Camera_v5_full_overview",
+            "Camera_canonical_full_overview",
             (dna_center.x - 48.0, dna_center.y - 142.0, 128.0),
             Vector((dna_center.x + 12.0, dna_center.y - 6.0, 36.0)),
             190.0,
         ),
         "p53_dna": create_camera(
-            "Camera_v5_p53_dna",
+            "Camera_canonical_p53_dna",
             (p53.x - 8.0, p53.y - 12.0, p53.z + 9.0),
             p53,
             9.0,
         ),
         "polymerase_rna_start": create_camera(
-            "Camera_v5_polymerase_rna_start",
+            "Camera_canonical_polymerase_rna_start",
             (polymerase.x - 10.0, polymerase.y - 14.0, polymerase.z + 10.0),
             polymerase,
             11.0,
         ),
         "nucleosome_loop": create_camera(
-            "Camera_v5_nucleosome_loop",
+            "Camera_canonical_nucleosome_loop",
             (nucleosome.x - 9.0, nucleosome.y - 13.0, nucleosome.z + 10.0),
             nucleosome,
             10.0,
         ),
         "ribosome_trna": create_camera(
-            "Camera_v5_ribosome_trna",
+            "Camera_canonical_ribosome_trna",
             (ribosome.x - 13.0, ribosome.y - 18.0, ribosome.z + 15.0),
             ribosome,
             17.0,
         ),
         "actin_product": create_camera(
-            "Camera_v5_actin_product",
+            "Camera_canonical_actin_product",
             (actin.x - 7.0, actin.y - 10.0, actin.z + 8.0),
             actin,
             7.0,
         ),
         "cas9_dna": create_camera(
-            "Camera_v5_cas9_dna",
+            "Camera_canonical_cas9_dna",
             (cas9.x - 9.0, cas9.y - 13.0, cas9.z + 10.0),
             cas9,
             DETAIL_SHARED_ORTHO_SCALE_MM,
@@ -1319,7 +1319,7 @@ def apply_focus_visibility(key: str) -> dict:
     patterns = FOCUS_OBJECT_PATTERNS[key]
     visible = []
     for obj in bpy.data.objects:
-        if obj.type in {"CAMERA", "LIGHT"} or obj.get("v5_beauty_object"):
+        if obj.type in {"CAMERA", "LIGHT"} or obj.get("canonical_beauty_object"):
             continue
         should_show = any(pattern in obj.name for pattern in patterns)
         obj.hide_render = not should_show
@@ -1330,7 +1330,7 @@ def apply_focus_visibility(key: str) -> dict:
 
 def create_detail_title(key: str, camera_name: str, collections: dict, materials: dict) -> str:
     for obj in list(bpy.data.objects):
-        if obj.get("v5_detail_title"):
+        if obj.get("canonical_detail_title"):
             bpy.data.objects.remove(obj, do_unlink=True)
     camera = bpy.data.objects[camera_name]
     obj = base.create_text(
@@ -1345,7 +1345,7 @@ def create_detail_title(key: str, camera_name: str, collections: dict, materials
     obj.location = _camera_overlay_point(camera, 0.07, 0.91)
     obj.rotation_euler = camera.rotation_euler
     obj.hide_render = False
-    obj["v5_detail_title"] = True
+    obj["canonical_detail_title"] = True
     obj["detail_view"] = key
     if key == "ribosome_trna":
         source = bpy.data.objects.get("label_Standalone tRNA")
@@ -1369,7 +1369,7 @@ def create_detail_title(key: str, camera_name: str, collections: dict, materials
             trna.location = _camera_overlay_point(camera, *label_position)
             trna.rotation_euler = camera.rotation_euler
             trna.hide_render = False
-            trna["v5_detail_title"] = True
+            trna["canonical_detail_title"] = True
             trna["detail_view"] = key
     return obj.name
 
@@ -1388,7 +1388,7 @@ def path_bounds(path) -> dict:
 def source_curve_visibility_validation(report: dict) -> dict:
     rows = []
     failures = []
-    for path_name, object_name in (("dna", "V5_DNA_source_path"), ("mrna", "V5_mRNA_source_path")):
+    for path_name, object_name in (("dna", "Canonical_DNA_source_path"), ("mrna", "Canonical_mRNA_source_path")):
         obj = bpy.data.objects.get(object_name)
         row = {
             "path": path_name,
@@ -1421,7 +1421,7 @@ def reader_order_validation(dna_path) -> dict:
     if not end_lower_right:
         failures.append({"reason": "path_end_not_lower_right_than_start"})
     return {
-        "path_mode": "v5_reader_order_serpentine_with_nucleosome_loop",
+        "path_mode": "canonical_reader_order_serpentine_with_nucleosome_loop",
         "bounds": bounds,
         "start_mm": [start.x, start.y, start.z],
         "end_mm": [end.x, end.y, end.z],
@@ -1435,7 +1435,7 @@ def dna_cluster_validation(asset_reports: list[dict]) -> dict:
     by_name = {item["name"]: item for item in asset_reports}
     rows = []
     failures = []
-    for name in sorted(v5.DNA_STRICT_CONTACT_NAMES):
+    for name in sorted(canonical.DNA_STRICT_CONTACT_NAMES):
         item = by_name.get(name)
         attachment = (item or {}).get("attachment_empty") or {}
         fraction = attachment.get("fraction")
@@ -1447,7 +1447,7 @@ def dna_cluster_validation(asset_reports: list[dict]) -> dict:
             failures.append({"name": name, "reason": "not_attached_to_dna", "actual_path": attachment.get("path")})
         elif fraction is None or float(fraction) > 0.2055:
             failures.append({"name": name, "reason": "outside_early_gene_cluster", "fraction": fraction, "max": 0.205})
-    return {"policy": "all DNA regulatory binders cluster in the first 20.5 percent of V5 DNA", "rows": rows, "failures": failures}
+    return {"policy": "all DNA regulatory binders cluster in the first 20.5 percent of Canonical DNA", "rows": rows, "failures": failures}
 
 
 def compact_position_validation(positioning: dict, compact_center: list[float]) -> dict:
@@ -1518,10 +1518,10 @@ def trna_ribosome_separation_report(asset_reports: list[dict]) -> dict:
     }
 
 
-def validate_v5_report(report: dict) -> None:
+def validate_canonical_report(report: dict) -> None:
     failures = []
     source_manifest = report.get("source_manifest", "").replace("\\", "/")
-    if not source_manifest.endswith("config/scene_manifest_v5.json"):
+    if not source_manifest.endswith("config/scene_manifest.json"):
         failures.append({"reason": "wrong_source_manifest", "source_manifest": report.get("source_manifest")})
     if report.get("dna", {}).get("represented_bp") != 3954:
         failures.append({"reason": "wrong_dna_bp", "represented_bp": report.get("dna", {}).get("represented_bp")})
@@ -1616,7 +1616,7 @@ def validate_v5_report(report: dict) -> None:
     if set(scale_bars) != set(required_scale_bars):
         failures.append(
             {
-                "reason": "wrong_v5_scale_bars",
+                "reason": "wrong_canonical_scale_bars",
                 "actual": sorted(scale_bars),
                 "expected": sorted(required_scale_bars),
             }
@@ -1676,26 +1676,26 @@ def validate_v5_report(report: dict) -> None:
     if foxm1 is not None and nucleosome is not None and abs(float(nucleosome) - float(foxm1)) < 0.04:
         failures.append({"reason": "foxm1_too_close_to_nucleosome", "foxm1": foxm1, "nucleosome": nucleosome, "minimum_fraction_gap": 0.04})
     if failures:
-        raise RuntimeError(f"Canonical V5 validation failed: {failures}")
+        raise RuntimeError(f"Canonical Canonical validation failed: {failures}")
 
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    manifest = v5.write_manifest()
+    manifest = canonical.write_manifest()
 
     scene.clean_scene()
     scene.configure_scene()
-    beauty_rendering = configure_v5_beauty_render()
+    beauty_rendering = configure_canonical_beauty_render()
     collections = base.make_collections(manifest["collections"])
     materials = base.make_materials()
     scene.soften_materials(materials)
-    color_palette = apply_v5_color_palette(materials)
+    color_palette = apply_canonical_color_palette(materials)
 
-    dna = build_v5_dna(manifest, collections, materials)
-    mrna = build_v5_mrna(manifest, collections, materials)
+    dna = build_canonical_dna(manifest, collections, materials)
+    mrna = build_canonical_mrna(manifest, collections, materials)
     actin_positioning = place_actin_from_mrna_endpoint(manifest, mrna["path"])
     compact_manifest, compact_positioning = compact_positioned_manifest(manifest, mrna["path"])
-    compact_mrna = build_v5_compact_mrna(compact_manifest, collections, materials)
+    compact_mrna = build_canonical_compact_mrna(compact_manifest, collections, materials)
     mrna_settings = manifest.get("procedural_nucleic_acids", {}).get("mrna", {})
     mrna_base_radii = mrna_settings.get("rna_base_ellipsoid_radii_mm", [0.135, 0.078, 0.055])
     contact_radii = {
@@ -1716,10 +1716,10 @@ def main() -> None:
 
     report = {
         "title": manifest["title"],
-        "kind": v5.REPORT_KIND,
-        "canonical_version": "v5",
+        "kind": canonical.REPORT_KIND,
+        "canonical_version": "canonical",
         "units": manifest["units"],
-        "source_manifest": str(v5.MANIFEST_PATH),
+        "source_manifest": str(canonical.MANIFEST_PATH),
         "surface_asset_dir": str(scene.REDUCED_SURFACE_DIR),
         "nucleic_acid_pipeline": "direct_blender_meshes_for_procedural_dna_mrna_and_compact_mrna",
         "reduction": scene.load_reduction_summary(),
@@ -1740,7 +1740,7 @@ def main() -> None:
     report["source_curve_visibility"] = source_curve_visibility_validation(report)
     report["reader_order_validation"] = reader_order_validation(dna["path"])
     report["compact_positioning"] = compact_position_validation(compact_positioning, compact_mrna["center_mm"])
-    report["scale_bars"] = add_v5_scale_bars(manifest, collections, materials)
+    report["scale_bars"] = add_canonical_scale_bars(manifest, collections, materials)
     report["pdb_assets"] = scene.build_assets(manifest, collections, materials, path_context)
     report["trna_ribosome_separation"] = trna_ribosome_separation_report(report["pdb_assets"])
     report["attachments"] = contact_helpers.attachment_table(report["pdb_assets"])
@@ -1755,7 +1755,7 @@ def main() -> None:
     )
     report["contact_validation"]["final_surface_contact"] = final_contact
     report["contact_validation"]["strict_contact_failures"].extend(final_contact["failures"])
-    camera_names = add_v5_cameras(
+    camera_names = add_canonical_cameras(
         manifest,
         dna["path"],
         mrna["path"],
@@ -1771,8 +1771,8 @@ def main() -> None:
     full_overview_camera_fit = fit_camera_to_renderables(camera_names["full_overview"])
     label_orientation = orient_labels_to_camera(camera_names["full_overview"])
     overview_label_placement = place_overview_labels(camera_names["full_overview"], collections, materials)
-    report["beauty_rendering"]["environment"] = add_v5_beauty_environment(camera_names["full_overview"], collections)
-    report["beauty_rendering"]["surface_polish"] = polish_v5_surface_rendering()
+    report["beauty_rendering"]["environment"] = add_canonical_beauty_environment(camera_names["full_overview"], collections)
+    report["beauty_rendering"]["surface_polish"] = polish_canonical_surface_rendering()
     report["render_label_policy"] = {
         "hidden_non_scale_label_count": 0,
         "scale_bar_labels_visible": True,
@@ -1793,9 +1793,9 @@ def main() -> None:
         for key in DETAIL_TITLES
     }
     scene.validate_scene(report)
-    validate_v5_report(report)
+    validate_canonical_report(report)
 
-    overview_only = os.environ.get("V5_OVERVIEW_ONLY", "") == "1"
+    overview_only = os.environ.get("CANONICAL_OVERVIEW_ONLY", "") == "1"
     primary_camera = bpy.data.objects[camera_names["full_overview"]]
     bpy.context.scene.camera = primary_camera
     bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS["full_overview"])
@@ -1822,7 +1822,7 @@ def main() -> None:
         camera_fit["auto_fit_ortho_scale_mm"] = fitted_scale
         camera_fit["new_ortho_scale_mm"] = DETAIL_SHARED_ORTHO_SCALE_MM
         camera_fit["scale_policy"] = "identical_orthographic_scale_for_cross_panel_size_comparison"
-        environment = add_v5_beauty_environment(camera_names[key], collections)
+        environment = add_canonical_beauty_environment(camera_names[key], collections)
         title_object = create_detail_title(key, camera_names[key], collections, materials)
         bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS[key])
         bpy.ops.render.render(write_still=True)
@@ -1835,11 +1835,11 @@ def main() -> None:
 
     restore_render_visibility(overview_visibility)
     for obj in list(bpy.data.objects):
-        if obj.get("v5_detail_title"):
+        if obj.get("canonical_detail_title"):
             bpy.data.objects.remove(obj, do_unlink=True)
     report["detail_rendering"] = detail_runs
     bpy.context.scene.camera = primary_camera
-    report["beauty_rendering"]["environment"] = add_v5_beauty_environment(camera_names["full_overview"], collections)
+    report["beauty_rendering"]["environment"] = add_canonical_beauty_environment(camera_names["full_overview"], collections)
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
     print(f"Wrote {BLEND_PATH}")

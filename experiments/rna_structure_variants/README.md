@@ -1,6 +1,6 @@
 # RNA Surface and Compact mRNP Variants
 
-This is one unified experiment with two comparison areas. The first compares three ssRNA surface treatments; the second compares six compact-mRNA models. Every model represents the same `1,852 nt` ACTB mRNA contour (`222.24 mm` at scene scale). It does not modify canonical V5.
+This is one unified experiment with two comparison areas. The first compares three ssRNA surface treatments; the second compares six compact-mRNA models. Every model represents the same `1,852 nt` ACTB mRNA contour (`222.24 mm` at scene scale). It does not modify the canonical scene.
 
 ## Scene-RNA surface study
 

@@ -1480,4 +1480,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    raise RuntimeError("surface_assets.py is a shared module; run run_canonical_v5_workflow.ps1")
+    raise RuntimeError("surface_assets.py is a shared module; run run_canonical_workflow.ps1")

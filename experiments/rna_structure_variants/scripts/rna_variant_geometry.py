@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import procedural_nucleic_geometry as geom  # noqa: E402
 
 
-MANIFEST_PATH = ROOT / "config" / "scene_manifest_v5.json"
+MANIFEST_PATH = ROOT / "config" / "scene_manifest.json"
 TOTAL_NT = 1852
 
 

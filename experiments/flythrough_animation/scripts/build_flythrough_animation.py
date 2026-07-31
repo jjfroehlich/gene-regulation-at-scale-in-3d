@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and optionally render the V5 educational flythrough animation."""
+"""Build and optionally render the educational flythrough animation."""
 
 from __future__ import annotations
 
@@ -15,10 +15,10 @@ from mathutils import Vector
 
 
 ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_SOURCE_BLEND = ROOT / "outputs" / "canonical" / "gene_expression_surface_style_v5.blend"
-DEFAULT_REPORT = ROOT / "outputs" / "canonical" / "gene_expression_surface_scene_v5_report.json"
-DEFAULT_OUTPUT_DIR = ROOT / "experiments" / "v5_flythrough_animation" / "outputs"
-STORY_DURATION_SECONDS = 60.0
+DEFAULT_SOURCE_BLEND = ROOT / "outputs" / "canonical" / "gene_expression_surface_style.blend"
+DEFAULT_REPORT = ROOT / "outputs" / "canonical" / "gene_expression_surface_scene_report.json"
+DEFAULT_OUTPUT_DIR = ROOT / "experiments" / "flythrough_animation" / "outputs"
+STORY_DURATION_SECONDS = 66.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -1203,8 +1203,8 @@ def configure_render(args: argparse.Namespace, frame_end: int, frames_dir: Path)
 
 
 def create_animation(args: argparse.Namespace, report: dict, output_blend: Path, output_mp4: Path, frames_dir: Path) -> dict:
-    dna_points = curve_points("V5_DNA_source_path")
-    mrna_points = curve_points("V5_mRNA_source_path")
+    dna_points = curve_points("Canonical_DNA_source_path")
+    mrna_points = curve_points("Canonical_mRNA_source_path")
     dna_length = polyline_length(dna_points)
     mrna_length = polyline_length(mrna_points)
 
@@ -1287,16 +1287,22 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
 
     dna_traversal_offset = Vector((-20.0, -32.0, 24.0))
     mrna_traversal_offset = Vector((-22.0, -30.0, 24.0))
+    gene_38 = point_at_fraction(dna_points, 0.38)
+    gene_62 = point_at_fraction(dna_points, 0.62)
+    gene_84 = point_at_fraction(dna_points, 0.84)
     shots = {
-        "overview_start": (scene_center + Vector((-78.0, -168.0, 172.0)), scene_center + Vector((18.0, -2.0, 2.0)), 22.0, 10.0),
-        "overview_end": (scene_center + Vector((-74.0, -160.0, 168.0)), scene_center + Vector((16.0, -1.0, 2.0)), 23.0, 9.5),
+        "overview_start": (scene_center + Vector((-78.0, -168.0, 82.0)), scene_center + Vector((18.0, -2.0, 2.0)), 22.0, 10.0),
+        "overview_end": (scene_center + Vector((-74.0, -160.0, 78.0)), scene_center + Vector((16.0, -1.0, 2.0)), 23.0, 9.5),
         "r2r3_myb": (asset_locations["Transcription factor 4"] + dna_traversal_offset, asset_locations["Transcription factor 4"], 50.0, 3.4),
         "cas9": (asset_locations["Cas9"] + dna_traversal_offset, asset_locations["Cas9"], 50.0, 3.2),
         "zbtb24": (asset_locations["Transcription factor 1"] + dna_traversal_offset, asset_locations["Transcription factor 1"], 52.0, 3.0),
         "p53": (asset_locations["p53 tetramer bound to DNA"] + dna_traversal_offset, asset_locations["p53 tetramer bound to DNA"], 64.0, 2.4),
         "foxm1": (asset_locations["Transcription factor 3"] + dna_traversal_offset, asset_locations["Transcription factor 3"], 54.0, 2.8),
+        "nucleosome": (asset_locations["Nucleosome"] + dna_traversal_offset, asset_locations["Nucleosome"], 52.0, 3.2),
+        "gene_38": (gene_38 + dna_traversal_offset, gene_38, 44.0, 4.0),
+        "gene_62": (gene_62 + dna_traversal_offset, gene_62, 44.0, 4.0),
+        "gene_84": (gene_84 + dna_traversal_offset, gene_84, 44.0, 4.0),
         "pol": (asset_locations["RNA polymerase II elongation complex"] + dna_traversal_offset, asset_locations["RNA polymerase II elongation complex"], 64.0, 2.4),
-        "nucleosome": (asset_locations["Nucleosome"] + dna_traversal_offset, (asset_locations["Nucleosome"] + point_at_fraction(mrna_points, 0.10)) * 0.5, 52.0, 3.2),
         "mrna_origin": (mrna_origin_focus + Vector((-18.0, -28.0, 24.0)), mrna_origin_focus, 56.0, 3.4),
         "pum2": (asset_locations["Pumilio RBP"] + mrna_traversal_offset, asset_locations["Pumilio RBP"], 44.0, 3.0),
         "pabp": (asset_locations["Poly(A)-binding RBP"] + mrna_traversal_offset, asset_locations["Poly(A)-binding RBP"], 44.0, 3.0),
@@ -1320,8 +1326,11 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
         "zbtb24",
         "p53",
         "foxm1",
-        "pol",
         "nucleosome",
+        "gene_38",
+        "gene_62",
+        "gene_84",
+        "pol",
         "mrna_origin",
         "pum2",
         "pabp",
@@ -1363,23 +1372,26 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
         (11.0, "zbtb24", 4, "zbtb24"),
         (13.2, "p53_slow_pass", 5, "p53"),
         (15.2, "foxm1_dbd", 6, "foxm1"),
-        (18.0, "rna_pol_ii_slow_pass", 7, "pol"),
-        (21.0, "nucleosome_rna_context", 8, "nucleosome"),
-        (24.0, "mrna_origin", 9, "mrna_origin"),
-        (26.0, "pum2", 10, "pum2"),
-        (28.0, "pabp", 11, "pabp"),
-        (30.0, "ms2", 12, "ms2"),
-        (32.0, "mcherry", 13, "mcherry"),
-        (35.0, "argonaute", 14, "argonaute"),
-        (39.0, "hur", 15, "hur"),
-        (41.0, "ribosome_approach", 16, "ribosome_approach"),
-        (43.0, "ribosome_entry", 17, "ribosome_entry"),
-        (45.0, "ribosome_slow_pass_start", 18, "ribosome_start"),
-        (47.0, "ribosome_center", 19, "ribosome"),
-        (49.0, "ribosome_slow_pass_exit", 20, "ribosome_exit"),
-        (52.0, "compact_mrna_pass", 21, "compact"),
-        (57.0, "actin_arrival", 22, "actin"),
-        (60.0, "actin_final_hold", 22, "actin"),
+        (18.0, "nucleosome", 7, "nucleosome"),
+        (20.5, "downstream_gene_38", 8, "gene_38"),
+        (22.5, "downstream_gene_62", 9, "gene_62"),
+        (24.5, "downstream_gene_84", 10, "gene_84"),
+        (27.0, "rna_pol_ii_gene_end", 11, "pol"),
+        (29.0, "mrna_origin", 12, "mrna_origin"),
+        (31.0, "pum2", 13, "pum2"),
+        (33.0, "pabp", 14, "pabp"),
+        (35.0, "ms2", 15, "ms2"),
+        (37.0, "mcherry", 16, "mcherry"),
+        (40.0, "argonaute", 17, "argonaute"),
+        (44.0, "hur", 18, "hur"),
+        (46.0, "ribosome_approach", 19, "ribosome_approach"),
+        (48.0, "ribosome_entry", 20, "ribosome_entry"),
+        (50.0, "ribosome_slow_pass_start", 21, "ribosome_start"),
+        (52.0, "ribosome_center", 22, "ribosome"),
+        (54.0, "ribosome_slow_pass_exit", 23, "ribosome_exit"),
+        (57.0, "compact_mrna_pass", 24, "compact"),
+        (62.0, "actin_arrival", 25, "actin"),
+        (66.0, "actin_final_hold", 25, "actin"),
     ]
     storyboard = []
     for seconds, name, path_index, shot_name in storyboard_specs:
@@ -1400,18 +1412,18 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
     mrna_highlight = create_curve_object("Animation_highlight_mRNA_1852nt_path", mrna_points, 0.13, mats["rna_highlight"], collections["highlights"])
     dna_highlight["educational_callout"] = "ACTB promoter + gene DNA; 3954 bp"
     mrna_highlight["educational_callout"] = "actin mRNA; 1852 nt"
-    animate_material_window(mats["dna_highlight"], frame_at(5, duration, fps), frame_at(24, duration, fps), 0.64, 0.75)
-    animate_material_window(mats["rna_highlight"], frame_at(21, duration, fps), frame_at(52, duration, fps), 0.68, 0.85)
+    animate_material_window(mats["dna_highlight"], frame_at(5, duration, fps), frame_at(29, duration, fps), 0.64, 0.75)
+    animate_material_window(mats["rna_highlight"], frame_at(27, duration, fps), frame_at(57, duration, fps), 0.68, 0.85)
 
     highlight_objects = [dna_highlight.name, mrna_highlight.name]
     emission_specs = [
         ("p53 tetramer bound to DNA", "protein", 12.0, 14.2, 0.45),
-        ("RNA polymerase II elongation complex", "protein", 16.8, 19.2, 0.35),
-        ("Nucleosome", "protein", 19.4, 21.4, 0.30),
-        ("Ribosome small subunit", "protein", 45.0, 48.5, 0.10),
-        ("Ribosome large subunit", "protein", 45.0, 48.5, 0.10),
-        ("Standalone tRNA", "nucleic", 45.0, 48.5, 0.16),
-        ("Actin protein", "protein", 53.0, 57.0, 0.40),
+        ("Nucleosome", "protein", 16.8, 19.4, 0.30),
+        ("RNA polymerase II elongation complex", "protein", 25.5, 29.2, 0.35),
+        ("Ribosome small subunit", "protein", 50.0, 53.5, 0.10),
+        ("Ribosome large subunit", "protein", 50.0, 53.5, 0.10),
+        ("Standalone tRNA", "nucleic", 50.0, 53.5, 0.16),
+        ("Actin protein", "protein", 58.0, 62.0, 0.40),
     ]
     emission_targets = [
         pulse_asset_emission(
@@ -1430,23 +1442,23 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
         ("Transcription factor 1", "zbtb24", "ZBTB24", "zbtb24", -4.5, 3.4, 0.56, 10.0, 12.2),
         ("p53 tetramer bound to DNA", "p53", "p53 tetramer", "p53", 4.5, 3.0, 0.56, 11.7, 14.4),
         ("Transcription factor 3", "foxm1", "FOXM1-DBD", "foxm1", -4.5, 3.4, 0.56, 14.0, 16.5),
-        ("RNA polymerase II elongation complex", "rna_pol_ii", "RNA Pol II", "pol", 5.0, 3.4, 0.58, 16.3, 19.6),
-        ("Nucleosome", "nucleosome", "nucleosome", "nucleosome", -5.0, 3.4, 0.58, 19.1, 22.0),
-        ("Pumilio RBP", "pum2", "PUM2", "pum2", -5.0, 4.0, 0.60, 24.4, 27.2),
-        ("Poly(A)-binding RBP", "pabp", "PABP", "pabp", 5.0, 4.0, 0.60, 26.5, 29.2),
-        ("MS2 coat protein MCP", "ms2", "MS2 coat protein", "ms2", -5.0, 3.8, 0.56, 28.5, 31.2),
-        ("mCherry/RFP tag", "mcherry", "mCherry", "mcherry", 5.0, 3.8, 0.56, 30.5, 33.5),
-        ("Argonaute", "argonaute", "Argonaute", "argonaute", -5.0, 3.8, 0.58, 33.0, 37.2),
-        ("HuR-like RBP", "hur", "HuR", "hur", 5.0, 3.8, 0.58, 37.0, 40.8),
-        ("Ribosome small subunit", "ribosome_small", "ribosome small subunit", "ribosome", -6.5, 5.2, 0.50, 45.0, 48.0),
-        ("Ribosome large subunit", "ribosome_large", "ribosome large subunit", "ribosome", 6.0, 1.0, 0.50, 45.0, 48.0),
-        ("Standalone tRNA", "trna", "tRNA", "ribosome", 9.0, -5.0, 0.54, 45.0, 48.0),
-        ("Actin protein", "actin", "ACTB protein\n375 aa", "actin", 1.7, 1.2, 0.46, 54.0, 60.0),
+        ("Nucleosome", "nucleosome", "nucleosome", "nucleosome", -5.0, 3.4, 0.58, 16.5, 19.5),
+        ("RNA polymerase II elongation complex", "rna_pol_ii", "RNA Pol II at gene end", "pol", 5.0, 3.4, 0.58, 25.5, 29.3),
+        ("Pumilio RBP", "pum2", "PUM2", "pum2", -5.0, 4.0, 0.60, 29.5, 32.2),
+        ("Poly(A)-binding RBP", "pabp", "PABP", "pabp", 5.0, 4.0, 0.60, 31.5, 34.2),
+        ("MS2 coat protein MCP", "ms2", "MS2 coat protein", "ms2", -5.0, 3.8, 0.56, 33.5, 36.2),
+        ("mCherry/RFP tag", "mcherry", "mCherry", "mcherry", 5.0, 3.8, 0.56, 35.5, 38.5),
+        ("Argonaute", "argonaute", "Argonaute", "argonaute", -5.0, 3.8, 0.58, 38.0, 42.2),
+        ("HuR-like RBP", "hur", "HuR", "hur", 5.0, 3.8, 0.58, 42.0, 45.8),
+        ("Ribosome small subunit", "ribosome_small", "ribosome small subunit", "ribosome", -6.5, 5.2, 0.50, 50.0, 53.0),
+        ("Ribosome large subunit", "ribosome_large", "ribosome large subunit", "ribosome", 6.0, 1.0, 0.50, 50.0, 53.0),
+        ("Standalone tRNA", "trna", "tRNA", "ribosome", 9.0, -5.0, 0.54, 50.0, 53.0),
+        ("Actin protein", "actin", "ACTB protein\n375 aa", "actin", 1.7, 1.2, 0.46, 59.0, 66.0),
     ]
     molecule_label_specs = [
         ("dna", "ACTB promoter + gene DNA\n3,954 bp", point_at_fraction(dna_points, 0.03), "r2r3_myb", -6.0, 5.5, 0.82, 5.0, 8.0),
-        ("mrna", "Actin mRNA\n1,852 nt", mrna_origin_focus, "mrna_origin", 5.0, 4.0, 0.72, 21.0, 24.5),
-        ("compact", "compact mRNA", compact_center, "compact", -5.0, 2.2, 0.58, 49.0, 54.0),
+        ("mrna", "Actin mRNA\n1,852 nt", mrna_origin_focus, "mrna_origin", 5.0, 4.0, 0.72, 27.0, 30.0),
+        ("compact", "compact mRNA", compact_center, "compact", -5.0, 2.2, 0.58, 54.0, 59.0),
     ]
     label_records = []
     label_texts = []
@@ -1612,11 +1624,11 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
 
     configure_render(args, frame_end, frames_dir)
     set_animation_interpolation()
-    actin_arrival_frame = frame_at(57.0, duration, fps)
+    actin_arrival_frame = frame_at(62.0, duration, fps)
     motion_validation = camera_motion_continuity(camera, target, 1, frame_end, duration, fps, moving_end_frame=actin_arrival_frame)
     if motion_validation["failures"]:
         raise RuntimeError(f"Animation camera continuity validation failed: {motion_validation['failures']}")
-    moving_progresses = [progress for seconds, _name, progress, *_rest in storyboard if seconds <= 57.0]
+    moving_progresses = [progress for seconds, _name, progress, *_rest in storyboard if seconds <= 62.0]
     non_increasing_progress = [
         {"index": index, "previous": moving_progresses[index - 1], "actual": moving_progresses[index]}
         for index in range(1, len(moving_progresses))
@@ -1709,12 +1721,12 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
             "passed": not missing_asset_labels and not duplicate_asset_labels and len(labeled_assets) == 17,
         },
         "path_progress_validation": {
-            "strictly_increasing_until_story_second": 57.0,
+            "strictly_increasing_until_story_second": 62.0,
             "non_increasing_steps": non_increasing_progress,
             "passed": not non_increasing_progress,
         },
         "text_validation": {"millimeter_labels": mm_text, "passed": not mm_text},
-        "actin_hold_seconds": round(3.0 * duration / STORY_DURATION_SECONDS, 3),
+        "actin_hold_seconds": round(4.0 * duration / STORY_DURATION_SECONDS, 3),
         "emission_targets": emission_targets,
         "lighting_objects": lighting_objects,
         "atmosphere_object": atmosphere.name,
@@ -1739,21 +1751,21 @@ def main() -> None:
         args.resolution_x = min(args.resolution_x, 640)
         args.resolution_y = min(args.resolution_y, 360)
 
-    output_blend = as_path(args.output_blend) if args.output_blend else args.output_dir / "v5_flythrough_animation.blend"
+    output_blend = as_path(args.output_blend) if args.output_blend else args.output_dir / "flythrough_animation.blend"
     default_mp4 = {
-        "smoke": "v5_flythrough_animation_smoke.mp4",
-        "review": "v5_flythrough_animation_review.mp4",
-        "final": "v5_flythrough_animation_1080p.mp4",
+        "smoke": "flythrough_animation_smoke.mp4",
+        "review": "flythrough_animation_review.mp4",
+        "final": "flythrough_animation_1080p.mp4",
     }[args.render_profile]
     output_mp4 = as_path(args.output_mp4) if args.output_mp4 else args.output_dir / default_mp4
-    report_path = args.output_dir / "v5_flythrough_animation_report.json"
+    report_path = args.output_dir / "flythrough_animation_report.json"
     default_frames_dir = {"smoke": "frames_smoke", "review": "frames_review", "final": "frames"}[args.render_profile]
     frames_dir = as_path(args.frames_dir) if args.frames_dir else args.output_dir / default_frames_dir
 
     if not args.source_blend.exists():
-        raise FileNotFoundError(f"Canonical V5 blend not found: {args.source_blend}")
+        raise FileNotFoundError(f"Canonical blend not found: {args.source_blend}")
     if not args.source_report.exists():
-        raise FileNotFoundError(f"Canonical V5 report not found: {args.source_report}")
+        raise FileNotFoundError(f"Canonical report not found: {args.source_report}")
 
     bpy.ops.wm.open_mainfile(filepath=str(args.source_blend))
     report = load_json(args.source_report)
