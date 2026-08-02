@@ -32,7 +32,7 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 ## Flythrough
 
 <p align="center">
-  <img src="docs/images/flythrough-preview.gif" alt="Educational flythrough animation preview">
+  <img src="docs/images/flythrough-preview.gif" alt="Educational flythrough animation preview" width="560">
 </p>
 
 ## 2017 Collage
