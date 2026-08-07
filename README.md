@@ -35,11 +35,11 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
   <img src="docs/images/flythrough-preview.gif" alt="Educational flythrough animation preview" width="560">
 </p>
 
-## 2017 Collage
+## 2D Collage
 
-This project builds on a collage I made in 2017.
+This project builds on a collage from 2021.
 
-![2017 gene expression scale poster](docs/images/poster-2017-gene-expression-scale.png)
+![2D gene regulation molecular collage in scale](docs/images/gene_regulation_molecular_view_in_scale_v5.jpg)
 
 
 > Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
