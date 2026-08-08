@@ -1,6 +1,6 @@
-# Gene Regulation at Scale in 3D
+# 3D Gene Expression Scene
 
-A three-dimensional sculpture of transcriptional and post-transcriptional control of gene expression. The scene follows a gene DNA path, mRNA spiral, to the final protein product for actin (ACTB). It includes RNA- and DNA-bound regulatory proteins, polymerase ii, Cas9, and the ribosomal translation machinery. And it is scale-accurate!
+A three-dimensional sculpture of transcriptional and post-transcriptional control of gene expression. The scene follows a gene DNA path, mRNA spiral, to the final protein product for actin (ACTB). It includes RNA- and DNA-bound regulatory proteins, polymerase ii, Cas9, and the ribosomal translation machinery. The relative scale of molecules is accurate. 
 
 ![Canonical overview render](docs/images/overview.jpg)
 
@@ -19,15 +19,13 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 | ![ACTB protein product](docs/images/actin.jpg) | ![Cas9 with guide and target DNA](docs/images/cas9-dna.jpg) |
 
 ## What Is Being Built Here
-- Scale-accurate 3D scene. 
-- Full ACTB promoter-plus-gene DNA path: `3,454 bp` canonical ACTB span plus `500 bp` upstream promoter, for `3,954 bp` total.
-- Full-length actin mRNA: `1,852 nt`, split into `5' UTR`, coding sequence, and `3' UTR` segments.
-- RNA polymerase II sits at the completed gene endpoint, where the full transcript's nascent `3′` end remains attached; the downstream RNA-to-protein branch is kept as one coherent arrangement.
-- Blender-generated DNA/RNA proxies at one shared physical scale.
-- Reduced surfaces for PyMOL PDB-derived proteins and nucleoprotein complexes.
-- Current PDB-derived scene assets include RNA polymerase II elongation complex `2E2I`, ribosome subunits `1J5E` and `1JJ2`, tRNA `4TNA`, nucleosome `1AOI`, Cas9 `4UN3`, transcription factors `6ML2`, `6KKS`, `3TS8`, and `3G73`, RNA-binding proteins `1U04`, `1CVJ`, `4ED5`, `3Q0Q`, and `1ZDH`, mCherry/RFP tag `2H5Q`, and actin protein `1J6Z`.
-- PDB-derived molecular surfaces with generated DNA/RNA meshes at shared scale: `1 nm = 0.4 mm`.
-- Note: this is of course not a realistic situation from a crowded cell. Also, between transcription and before translation the mRNA would need to be exported from the nucleus. 
+- Scale-accurate 3D scene, at shared scale: `1 nm = 0.4 mm`.
+- ACTB promoter-plus-gene DNA: `3,454 bp` canonical ACTB, plus `500 bp` upstream promoter = `3,954 bp` total.
+- Actin spliced mRNA: `1,852 nt`, split into `5' UTR`, coding sequence, and `3' UTR` segments.
+- RNA polymerase II sits at the gene endpoint, where the full transcript's nascent `3′` end remains attached. Splicing is not shown, mRNA shown in final spliced form.
+- Note: this is of course not a realistic situation in a densely crowded cell. Also, between transcription and before translation the mRNA would need to be exported from the nucleus. 
+
+See [docs/references.md](docs/references.md) for PDB IDs and source links.
 
 ## Flythrough
 
@@ -37,14 +35,13 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 
 ## 2D Collage
 
-This project builds on a collage from 2021.
+This project builds on an illustration I made in the past.
 
 ![2D gene regulation molecular collage in scale](docs/images/gene_regulation_molecular_view_in_scale_v5.jpg)
 
+> Transcriptional- and posttranscriptional control of gene expression in scale. Assembled as collage in Photoshop, then traced-, re-arranged-, and re-colored in Illustrator. Structures and components from: RCSB Protein Database & Bionumbers book. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
 
-> Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
-
-See [docs/references.md](docs/references.md) for source links, PDB IDs, and attribution details.
+See [docs/references.md](docs/references.md) for source links and attribution details.
 
 
 ## Build from Scripts

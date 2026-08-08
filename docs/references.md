@@ -1,27 +1,5 @@
 # References and Attribution
 
-## 2017 Poster Note
-
-The GitHub README uses the tracked web copy at `docs/images/poster-2017-gene-expression-scale.png`.
-
-Original note:
-
-> Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
-
-## Source Links
-
-- [RCSB PDB](https://www.rcsb.org/) for structure data and PDB entry pages.
-- [PDB-101 Molecular Machinery](https://mm.rcsb.org/) for the earlier scale-comparison inspiration and molecular-machine visual reference.
-- [BioNumbers: Which is bigger, mRNA or the protein it codes for?](https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/) for the actin mRNA/protein scale comparison idea.
-- [NCBI RefSeq NM_001101.5](https://www.ncbi.nlm.nih.gov/nuccore/NM_001101.5) for the 1,852 nt human ACTB mRNA reference.
-- [Rouskin et al., Nature 2014](https://www.nature.com/articles/nature12894) for experimental evidence that cellular mRNAs contain extensive but dynamic secondary structure; this will inform future RNA-folding experiments rather than the restored canonical RNA path.
-- [PDB-101 Molecule of the Month 181](https://pdb101.rcsb.org/motm/181).
-- [PDB-101 Molecule of the Month 98](https://pdb101.rcsb.org/motm/98).
-- [PDB-101 Molecule of the Month 112](https://pdb101.rcsb.org/motm/112).
-- [PDB-101 Molecule of the Month 31](https://pdb101.rcsb.org/motm/31).
-
-The 2017 poster note credits David Goodsell and RCSB PDB. 
-
 ## Current PDB-Derived Assets
 
 | PDB ID | Scene role | Source |
@@ -43,3 +21,19 @@ The 2017 poster note credits David Goodsell and RCSB PDB.
 | `3Q0Q` | Pumilio2 RNA-binding domain | https://www.rcsb.org/structure/3Q0Q |
 | `1ZDH` | MS2 coat protein with RNA | https://www.rcsb.org/structure/1ZDH |
 | `2H5Q` | mCherry/RFP tag | https://www.rcsb.org/structure/2H5Q |
+
+## Older Collage Sources
+
+- [RCSB PDB](https://www.rcsb.org/) for structure data and PDB entry pages.
+- [PDB-101 Molecular Machinery](https://mm.rcsb.org/) for the earlier scale-comparison inspiration and molecular-machine visual reference.
+- [BioNumbers: Which is bigger, mRNA or the protein it codes for?](https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/) for the actin mRNA/protein scale comparison idea.
+- [NCBI RefSeq NM_001101.5](https://www.ncbi.nlm.nih.gov/nuccore/NM_001101.5) for the 1,852 nt human ACTB mRNA reference.
+- [Rouskin et al., Nature 2014](https://www.nature.com/articles/nature12894) for experimental evidence that cellular mRNAs contain extensive but dynamic secondary structure; this will inform future RNA-folding experiments rather than the restored canonical RNA path.
+- [PDB-101 Molecule of the Month 181](https://pdb101.rcsb.org/motm/181).
+- [PDB-101 Molecule of the Month 98](https://pdb101.rcsb.org/motm/98).
+- [PDB-101 Molecule of the Month 112](https://pdb101.rcsb.org/motm/112).
+- [PDB-101 Molecule of the Month 31](https://pdb101.rcsb.org/motm/31).
+
+Original note:
+> Transcriptional- and posttranscriptional control of gene expression in scale. All structures from David Goodsell & RCSB PDB. Main parts from https://mm.rcsb.org. The mRNA and the idea of the scale of actin mRNA to actin protein from https://book.bionumbers.org/which-is-bigger-mrna-or-the-protein-it-codes-for/ and I took other molecules from "molecules of the month" https://pdb101.rcsb.org/motm/181 https://pdb101.rcsb.org/motm/98 https://pdb101.rcsb.org/motm/112 https://pdb101.rcsb.org/motm/31.
+
