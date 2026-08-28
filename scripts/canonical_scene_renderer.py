@@ -103,12 +103,19 @@ OVERVIEW_LABEL_POSITIONS = {
     "label_Ribosome small subunit": (0.71, 0.73),
     "label_Standalone tRNA": (0.78, 0.71),
 }
-PRIMARY_CALLOUTS = {
-    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.825, 0.29), "span": (0.16, 0.42)},
-    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
-    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
+OVERVIEW_LABEL_OVERRIDES = {
+    "label_Ribosome large subunit": (0.607, 0.520),
+    "label_Ribosome small subunit": (0.5535, 0.589),
+    "label_Argonaute": (0.671, 0.365),
+    "label_Poly(A)-binding RBP": (0.496, 0.3055),
+    "label_MS2 coat protein MCP": (0.443, 0.3055),
 }
-COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.014, 0.014)}
+PRIMARY_CALLOUTS = {
+    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.817, 0.29), "span": (0.16, 0.42), "line_x": 0.806},
+    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.817, 0.51), "span": (0.22, 0.80), "line_x": 0.802},
+    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.817, 0.852), "span": (0.838, 0.865), "line_x": 0.802},
+}
+COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.005, 0.003)}
 DETAIL_TITLES = {
     "p53_dna": "p53 tetramer + DNA (3TS8)",
     "nucleosome_loop": "nucleosome core + wrapped DNA (1AOI)",
@@ -174,14 +181,19 @@ def compact_positioned_manifest(manifest: dict, mrna_path) -> tuple[dict, dict]:
     mrna_end = Vector((mrna_path.points[-1].x, mrna_path.points[-1].y, mrna_path.points[-1].z))
     actin = canonical.asset_by_name(adjusted, "Actin protein")
     actin_location = Vector(actin["location_mm"])
-    center = mrna_end.lerp(actin_location, 0.55)
+    interpolation = float(
+        adjusted["procedural_nucleic_acids"]["mrna"].get(
+            "compact_interpolation_from_mrna_end_to_actin", 0.55
+        )
+    )
+    center = mrna_end.lerp(actin_location, interpolation)
     adjusted["procedural_nucleic_acids"]["mrna"]["compact_center_mm"] = [center.x, center.y, center.z]
     return adjusted, {
         "mode": "between_mrna_end_and_actin",
         "mrna_end_mm": [mrna_end.x, mrna_end.y, mrna_end.z],
         "actin_location_mm": [actin_location.x, actin_location.y, actin_location.z],
         "computed_center_mm": [center.x, center.y, center.z],
-        "interpolation_from_mrna_end_to_actin": 0.55,
+        "interpolation_from_mrna_end_to_actin": interpolation,
     }
 
 
@@ -850,7 +862,7 @@ def _camera_overlay_point(camera: bpy.types.Object, x_norm: float, y_norm: float
 
 def _remove_annotation_guides() -> None:
     for obj in list(bpy.data.objects):
-        if obj.get("canonical_annotation_leader") or obj.get("canonical_annotation_bracket") or obj.get("canonical_label_backing"):
+        if obj.get("canonical_annotation_leader") or obj.get("canonical_annotation_bracket") or obj.get("canonical_annotation_line") or obj.get("canonical_label_backing"):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
@@ -937,23 +949,20 @@ def _create_label_backing(name: str, camera: bpy.types.Object, box, collections:
     return obj.name
 
 
-def _create_group_bracket(
+def _create_group_line(
     name: str,
     camera: bpy.types.Object,
     span: tuple[float, float],
+    line_x: float,
     collections: dict,
     materials: dict,
 ) -> str:
-    bracket_x = 0.805
-    tick = 0.018
     bottom, top = span
     points = [
-        _camera_overlay_point(camera, bracket_x - tick, top),
-        _camera_overlay_point(camera, bracket_x, top),
-        _camera_overlay_point(camera, bracket_x, bottom),
-        _camera_overlay_point(camera, bracket_x - tick, bottom),
+        _camera_overlay_point(camera, line_x, top),
+        _camera_overlay_point(camera, line_x, bottom),
     ]
-    bracket = base.create_curve(
+    line = base.create_curve(
         name,
         [(point.x, point.y, point.z) for point in points],
         0.060,
@@ -961,8 +970,8 @@ def _create_group_bracket(
         collections["Labels"],
         resolution=1,
     )
-    bracket["canonical_annotation_bracket"] = True
-    return bracket.name
+    line["canonical_annotation_line"] = True
+    return line.name
 
 
 def place_overview_labels(camera_name: str, collections: dict, materials: dict) -> dict:
@@ -994,7 +1003,7 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
         lines = obj.data.body.splitlines() or [obj.data.body]
         box_width = max(0.026, min(0.078, 0.006 + max(len(line) for line in lines) * 0.00215))
         box_height = max(0.017, len(lines) * 0.017)
-        gap = 0.008 if obj.name == "label_HuR-like RBP" else 0.003
+        gap = 0.003 if obj.name == "label_HuR-like RBP" else 0.001
         half_width, half_height = box_width * 0.5, box_height * 0.5
         candidates = [
             (molecule_box[1] + gap + half_width, anchor_norm[1]),
@@ -1006,6 +1015,9 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
             (molecule_box[1] + gap + half_width, molecule_box[2] - gap - half_height),
             (molecule_box[0] - gap - half_width, molecule_box[2] - gap - half_height),
         ]
+        preferred = OVERVIEW_LABEL_OVERRIDES.get(obj.name)
+        if preferred is not None:
+            candidates.insert(0, preferred)
         for extra_gap in (gap + 0.012, gap + 0.024, gap + 0.036):
             candidates.extend(
                 [
@@ -1038,7 +1050,10 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
                 inside = box[0] >= 0.08 and box[1] <= 0.775 and box[2] >= 0.08 and box[3] <= 0.93
                 if inside and not any(_boxes_overlap(box, other) for other in occupied):
                     valid.append((candidate, box))
-        if valid:
+        preferred_valid = next((item for item in valid if preferred is not None and item[0] == preferred), None)
+        if preferred_valid is not None:
+            (x_norm, y_norm), placed_box = preferred_valid
+        elif valid:
             (x_norm, y_norm), placed_box = min(valid, key=lambda item: abs(item[0][0] - anchor_norm[0]) + abs(item[0][1] - anchor_norm[1]))
         else:
             x_norm = max(0.08 + box_width * 0.5, min(0.775 - box_width * 0.5, candidates[0][0]))
@@ -1123,8 +1138,8 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
         obj.data.align_y = "CENTER"
         obj.data.size = 1.55
         obj.location = _camera_overlay_point(camera, x_norm, y_norm)
-        bracket_name = _create_group_bracket(
-            f"overview_group_bracket_{object_name}", camera, spec["span"], collections, materials
+        line_name = _create_group_line(
+            f"overview_group_line_{object_name}", camera, spec["span"], spec["line_x"], collections, materials
         )
         obj["overview_label_position"] = [x_norm, y_norm]
         primary_rows.append(
@@ -1133,7 +1148,8 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
                 "text": spec["text"],
                 "view_position": [x_norm, y_norm],
                 "span": list(spec["span"]),
-                "bracket": bracket_name,
+                "line": line_name,
+                "line_x": spec["line_x"],
                 "leader": None,
             }
         )
@@ -1155,7 +1171,7 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
             ):
                 molecule_overlap_pairs.append([left["object"], molecule_name])
     return {
-        "policy": "three right-side camera-space brackets group protein, mRNA, and DNA; PDB labels remain in world space at molecule depth and are camera-packed immediately outside projected molecule bounds without leaders or backings",
+        "policy": "three right-side camera-space vertical lines identify protein, mRNA, and DNA extents; the mRNA and DNA lines run in parallel where both molecules occupy the same projected height; PDB labels remain at molecule depth and are packed immediately outside projected molecule bounds without leaders or backings",
         "camera": camera_name,
         "placed_label_count": len(rows) + len(primary_rows) + (1 if compact_row else 0),
         "primary_callouts": primary_rows,

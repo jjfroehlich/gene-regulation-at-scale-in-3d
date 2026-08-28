@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 import sys
 from pathlib import Path
 
@@ -58,11 +57,11 @@ FOCUS_OBJECT_PATTERNS = {
 }
 
 PRIMARY_CALLOUTS = {
-    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.825, 0.29), "span": (0.16, 0.42)},
-    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.825, 0.63), "span": (0.44, 0.82)},
-    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.825, 0.92), "span": (0.87, 0.97)},
+    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.817, 0.29), "span": (0.16, 0.42), "line_x": 0.806},
+    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.817, 0.51), "span": (0.22, 0.80), "line_x": 0.802},
+    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.817, 0.852), "span": (0.838, 0.865), "line_x": 0.802},
 }
-COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.014, 0.014)}
+COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.005, 0.003)}
 
 
 def build_canonical_dna(manifest: dict, collections: dict, materials: dict) -> dict:
@@ -338,5 +337,4 @@ def configure_renderer() -> None:
 
 if __name__ == "__main__":
     configure_renderer()
-    os.environ.pop("CANONICAL_OVERVIEW_ONLY", None)
     renderer.main()

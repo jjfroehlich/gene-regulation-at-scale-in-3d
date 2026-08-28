@@ -258,9 +258,9 @@
       "direct_smooth_iterations": 1,
       "direct_unified_mesh": true,
       "compact_center_mm": [
-        28.117095778447364,
-        -86.59237808240398,
-        90.83461736687927
+        29.617439727783203,
+        -86.74100067138672,
+        88.64
       ],
       "compact_width_mm": 10.5,
       "compact_height_mm": 8.0,
@@ -268,6 +268,7 @@
       "compact_seed": 304,
       "path_mode": "canonical_polymerase_spiral",
       "compact_position_mode": "between_mrna_end_and_actin",
+      "compact_interpolation_from_mrna_end_to_actin": 0.32,
       "show_radial_nucleotide_detail": false,
       "elongated_path_origin": "3_prime_at_polymerase_ii",
       "canonical_spiral": {
