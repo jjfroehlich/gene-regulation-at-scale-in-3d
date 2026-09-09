@@ -6,8 +6,6 @@ A three-dimensional sculpture of transcriptional and post-transcriptional contro
 
 ## Render Details
 
-These close-ups use individual framing and a calibrated nanometer scale bar in each image. The original shared-scale detail renders remain available for direct size comparisons.
-
 |  |  |
 | --- | --- |
 | ![Full p53 tetramer bound to DNA](docs/images/p53-dna.jpg) | ![Nucleosome core with wrapped DNA](docs/images/nucleosome-loop.jpg) |
@@ -30,10 +28,6 @@ These close-ups use individual framing and a calibrated nanometer scale bar in e
 See [docs/references.md](docs/references.md) for PDB IDs and source links.
 
 ## Flythrough
-
-The current film is a 66-second dark molecular journey at 1080p/24 fps, with gentle focus shifts, light sweeps, a six-second ribosome passage, and a four-second actin hold. The GIF below plays at 1x speed.
-
-Build or resume it with `./animation/run_flythrough_animation.ps1`. The scene, final/review MP4s, playback page, and validation report are in `outputs/animation/`. See [the animation workflow](animation/README.md).
 
 <p align="center">
   <img src="docs/images/flythrough-preview.gif" alt="Educational flythrough animation preview" width="560">
