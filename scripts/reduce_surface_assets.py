@@ -40,30 +40,9 @@ GENERIC_TARGETS = {
     "nucleic": 30_000,
 }
 
-PROCEDURAL_TARGETS = {
-    "DNA_PROXY": {
-        "strand_A": 55_000,
-        "strand_B": 55_000,
-        "base_pairs": 90_000,
-    },
-    "MRNA_PROXY": {
-        "utr5": 15_000,
-        "coding": 90_000,
-        "utr3": 60_000,
-    },
-    "MRNA_COMPACT_PROXY": {
-        "utr5": 20_000,
-        "coding": 105_000,
-        "utr3": 70_000,
-    },
-}
-
-
-def procedural_target_key(pdb_id: str) -> str | None:
-    for key in PROCEDURAL_TARGETS:
-        if pdb_id == key or pdb_id.startswith(f"{key}_"):
-            return key
-    return None
+def canonical_asset_ids() -> set[str]:
+    manifest=json.loads((ROOT/'config/scene_manifest.json').read_text(encoding='utf-8'))
+    return {asset['pdb_id'].upper() for asset in manifest['pdb_assets']}
 
 
 def parse_component(path: Path) -> tuple[str, str] | None:
@@ -71,7 +50,7 @@ def parse_component(path: Path) -> tuple[str, str] | None:
     prefix = f"{pdb_id}_surface_"
     if not path.name.startswith(prefix) or path.suffix.lower() != ".obj":
         return None
-    if procedural_target_key(pdb_id) and os.environ.get("SURFACE_REDUCTION_INCLUDE_PROCEDURAL", "") != "1":
+    if pdb_id not in canonical_asset_ids():
         return None
     return pdb_id, path.stem[len(prefix):]
 
@@ -100,9 +79,6 @@ def selected_ids() -> set[str] | None:
 
 
 def target_faces(pdb_id: str, component: str, raw_faces: int) -> int:
-    procedural_key = procedural_target_key(pdb_id)
-    if procedural_key:
-        return min(raw_faces, PROCEDURAL_TARGETS[procedural_key].get(component, raw_faces))
     if pdb_id in RIBOSOME_PDBS:
         if component.startswith("tRNA_"):
             return min(raw_faces, 25_000)
@@ -223,13 +199,13 @@ def main() -> None:
         existing_entries = [
             entry
             for entry in existing.get("entries", [])
-            if entry.get("pdb_id") not in requested
+            if entry.get("pdb_id") in canonical_asset_ids() and entry.get("pdb_id") not in requested
             and (ROOT / entry.get("reduced_obj", "")).is_file()
         ]
         existing_skipped = [
             entry
             for entry in existing.get("skipped", [])
-            if entry.get("pdb_id") not in requested and (ROOT / entry.get("raw_obj", "")).is_file()
+            if entry.get("pdb_id") in canonical_asset_ids() and entry.get("pdb_id") not in requested and (ROOT / entry.get("raw_obj", "")).is_file()
         ]
 
     entries = []
@@ -261,7 +237,6 @@ def main() -> None:
                 "mRNA": 8_000,
             },
             "generic": GENERIC_TARGETS,
-            "procedural_nucleic_acids": "ignored by canonical workflow unless SURFACE_REDUCTION_INCLUDE_PROCEDURAL=1",
         },
     }
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")

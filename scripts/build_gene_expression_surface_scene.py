@@ -57,9 +57,9 @@ FOCUS_OBJECT_PATTERNS = {
 }
 
 PRIMARY_CALLOUTS = {
-    "label_DNA_canonical": {"text": "Actb promoter + gene DNA 3954 bp", "view_position": (0.817, 0.29), "span": (0.16, 0.42), "line_x": 0.806},
-    "label_mRNA_canonical": {"text": "Actb mRNA 1852 nt", "view_position": (0.817, 0.51), "span": (0.22, 0.80), "line_x": 0.802},
-    "label_ACTB_primary_canonical": {"text": "ACTB protein 375 aa", "view_position": (0.817, 0.852), "span": (0.838, 0.865), "line_x": 0.802},
+    "label_DNA_canonical": {"text": "DNA · 3,954 bp", "view_position": (0.817, 0.29), "span": (0.16, 0.42), "line_x": 0.806},
+    "label_mRNA_canonical": {"text": "mRNA · 1,852 nt", "view_position": (0.817, 0.51), "span": (0.22, 0.80), "line_x": 0.802},
+    "label_ACTB_primary_canonical": {"text": "Protein - 375 aa", "view_position": (0.817, 0.852), "span": (0.838, 0.865), "line_x": 0.802},
 }
 COMPACT_CALLOUT = {"object": "label_compact_mrna_canonical", "text": "mRNA compact", "offset": (0.005, 0.003)}
 
@@ -208,15 +208,7 @@ def place_overview_labels(camera_name: str, collections: dict, materials: dict) 
 
 
 def fit_camera_to_renderables(camera_name: str, margin_fraction: float = 0.075) -> dict:
-    result = ORIGINAL_FIT_CAMERA(camera_name, margin_fraction)
-    if camera_name == "Camera_canonical_full_overview" and result.get("fit_applied"):
-        camera = bpy.data.objects[camera_name]
-        camera.data.ortho_scale *= 1.08
-        camera.location += camera.matrix_world.to_3x3() @ Vector((float(camera.data.ortho_scale) * 0.065, 0.0, 0.0))
-        result["new_location_mm"] = list(camera.location)
-        result["new_ortho_scale_mm"] = float(camera.data.ortho_scale)
-        result["canonical_right_gutter"] = True
-    return result
+    return ORIGINAL_FIT_CAMERA(camera_name, margin_fraction)
 
 
 def projected_centerline_separation_validation() -> dict:

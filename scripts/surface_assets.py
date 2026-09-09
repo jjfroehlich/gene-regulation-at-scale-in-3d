@@ -37,25 +37,7 @@ DETAIL_PREVIEWS = {
 
 BACKGROUND_COLOR = (0.985, 0.985, 0.965, 1.0)
 RIBOSOME_PDBS = {"1J5E", "1JJ2"}
-NUCLEIC_PROXY_STYLE = "procedural_pymol_surface_proxy_polished"
 DIRECT_NUCLEIC_STYLE = "direct_blender_surface_proxy_polished"
-NUCLEIC_PROXY_VOXEL_SIZE_MM = 0.075
-NUCLEIC_PROXY_SMOOTH_ITERATIONS = 1
-NUCLEIC_PROXY_SMOOTH_FACTOR = 0.10
-DNA_BASE_STRICT_MARGIN_MM = 0.040
-DNA_BASE_SOFT_MARGIN_MM = 0.060
-DNA_STRAND_SYMMETRY_MM = 0.22
-DNA_MATERIAL_SMOOTHING_ITERATIONS = 2
-DNA_PROXY_COMPONENTS = [
-    ("strand_A", "dna_orange"),
-    ("strand_B", "dna_dark"),
-    ("base_pairs", "rna_gold"),
-]
-MRNA_PROXY_COMPONENTS = [
-    ("utr5", "olive"),
-    ("coding", "orange"),
-    ("utr3", "yellow_olive"),
-]
 DNA_BINDING_COLLECTIONS = {"DNA", "Transcription"}
 DNA_ALIGNMENT_GUIDE_COMPONENTS = {"nucleic"}
 
@@ -461,252 +443,6 @@ def mesh_data_from_object(obj: bpy.types.Object) -> tuple[list[tuple[float, floa
     vertices = [(vertex.co.x, vertex.co.y, vertex.co.z) for vertex in obj.data.vertices]
     faces = [tuple(poly.vertices) for poly in obj.data.polygons]
     return vertices, faces
-
-
-def apply_voxel_polish(obj: bpy.types.Object) -> dict:
-    before_vertices, before_faces = mesh_data_from_object(obj)
-    before = mesh_topology_stats(before_vertices, before_faces)
-    bpy.ops.object.select_all(action="DESELECT")
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
-    remesh = obj.modifiers.new("voxel_close_small_holes", "REMESH")
-    remesh.mode = "VOXEL"
-    remesh.voxel_size = NUCLEIC_PROXY_VOXEL_SIZE_MM
-    remesh.adaptivity = 0.0
-    remesh.use_smooth_shade = True
-    bpy.ops.object.modifier_apply(modifier=remesh.name)
-    smooth = obj.modifiers.new("surface_relax", "SMOOTH")
-    smooth.factor = NUCLEIC_PROXY_SMOOTH_FACTOR
-    smooth.iterations = NUCLEIC_PROXY_SMOOTH_ITERATIONS
-    bpy.ops.object.modifier_apply(modifier=smooth.name)
-    bpy.ops.object.shade_smooth()
-    after_vertices, after_faces = mesh_data_from_object(obj)
-    return {
-        "voxel_size_mm": NUCLEIC_PROXY_VOXEL_SIZE_MM,
-        "smooth_iterations": NUCLEIC_PROXY_SMOOTH_ITERATIONS,
-        "smooth_factor": NUCLEIC_PROXY_SMOOTH_FACTOR,
-        "before": before,
-        "after": mesh_topology_stats(after_vertices, after_faces),
-    }
-
-
-def proxy_component_path(asset_id: str, component: str) -> Path:
-    path = REDUCED_SURFACE_DIR / asset_id / f"{asset_id}_surface_{component}.obj"
-    if not path.exists() or path.stat().st_size == 0:
-        raise FileNotFoundError(f"Missing reduced procedural PyMOL proxy surface: {path}")
-    return path
-
-
-def merge_proxy_components(
-    asset_id: str,
-    components: list[tuple[str, str]],
-    scale: float,
-) -> tuple[list[tuple[float, float, float]], list[tuple[int, ...]], list[dict], dict[str, list[tuple[float, float, float]]]]:
-    merged_vertices: list[tuple[float, float, float]] = []
-    merged_faces: list[tuple[int, ...]] = []
-    reports = []
-    component_vertices: dict[str, list[tuple[float, float, float]]] = {}
-    transform = lambda vertex_A: vertex_A * scale
-    for component, material_key in components:
-        path = proxy_component_path(asset_id, component)
-        vertices, faces = parse_obj_transformed(path, transform)
-        offset = len(merged_vertices)
-        merged_vertices.extend(vertices)
-        merged_faces.extend(tuple(index + offset for index in face) for face in faces)
-        component_vertices[material_key] = vertices
-        reports.append(
-            {
-                "component": component,
-                "material": material_key,
-                "source_obj": str(path.relative_to(ROOT)).replace("\\", "/"),
-                **mesh_topology_stats(vertices, faces),
-            }
-        )
-    return merged_vertices, merged_faces, reports, component_vertices
-
-
-def create_proxy_mesh_object(
-    name: str,
-    vertices: list[tuple[float, float, float]],
-    faces: list[tuple[int, ...]],
-    material: bpy.types.Material,
-    collection: bpy.types.Collection,
-    asset_id: str,
-) -> bpy.types.Object:
-    mesh = bpy.data.meshes.new(f"{name}_mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    for polygon in mesh.polygons:
-        polygon.use_smooth = True
-    mesh.materials.append(material)
-    obj = bpy.data.objects.new(name, mesh)
-    base.link_to_collection(obj, collection)
-    obj["style"] = NUCLEIC_PROXY_STYLE
-    obj["asset_id"] = asset_id
-    obj["source"] = "procedural_pseudoatom_pymol_surface"
-    obj["coordinate_units"] = "millimeter"
-    obj["source_coordinate_units"] = "angstrom"
-    obj["angstrom_to_mm"] = 0.04
-    return obj
-
-
-def build_component_kdtrees(component_vertices: dict[str, list[tuple[float, float, float]]]) -> dict[str, KDTree]:
-    kdtrees: dict[str, KDTree] = {}
-    for material_key, vertices in component_vertices.items():
-        kd = KDTree(len(vertices))
-        for index, vertex in enumerate(vertices):
-            kd.insert(Vector(vertex), index)
-        kd.balance()
-        kdtrees[material_key] = kd
-    return kdtrees
-
-
-def nearest_distance(kd: KDTree, point: Vector) -> float:
-    _co, _index, distance = kd.find(point)
-    return float(distance)
-
-
-def polygon_neighbors(mesh: bpy.types.Mesh) -> list[set[int]]:
-    edge_users: dict[tuple[int, int], list[int]] = {}
-    for polygon in mesh.polygons:
-        vertices = list(polygon.vertices)
-        for i, a in enumerate(vertices):
-            b = vertices[(i + 1) % len(vertices)]
-            edge = (a, b) if a < b else (b, a)
-            edge_users.setdefault(edge, []).append(polygon.index)
-    neighbors = [set() for _ in mesh.polygons]
-    for users in edge_users.values():
-        if len(users) < 2:
-            continue
-        for index in users:
-            neighbors[index].update(other for other in users if other != index)
-    return neighbors
-
-
-def smooth_material_assignments(mesh: bpy.types.Mesh, assignments: list[int], iterations: int) -> list[int]:
-    neighbors = polygon_neighbors(mesh)
-    current = assignments[:]
-    for _iteration in range(iterations):
-        updated = current[:]
-        for index, face_neighbors in enumerate(neighbors):
-            if not face_neighbors:
-                continue
-            counts = Counter(current[neighbor] for neighbor in face_neighbors)
-            majority, majority_count = counts.most_common(1)[0]
-            if majority != current[index] and majority_count >= max(3, int(len(face_neighbors) * 0.62)):
-                updated[index] = majority
-        current = updated
-    return current
-
-
-def transfer_rna_materials(
-    obj: bpy.types.Object,
-    components: list[tuple[str, str]],
-    component_vertices: dict[str, list[tuple[float, float, float]]],
-    materials: dict[str, bpy.types.Material],
-) -> dict:
-    material_keys = [material_key for _component, material_key in components]
-    kdtrees = build_component_kdtrees(component_vertices)
-    obj.data.materials.clear()
-    for material_key in material_keys:
-        obj.data.materials.append(materials[material_key])
-    face_counts = {material_key: 0 for material_key in material_keys}
-    for polygon in obj.data.polygons:
-        distances = [(nearest_distance(kdtrees[material_key], polygon.center), material_key) for material_key in material_keys]
-        _distance, material_key = min(distances, key=lambda item: item[0])
-        polygon.material_index = material_keys.index(material_key)
-        face_counts[material_key] += 1
-    obj.data.update()
-    return {"method": "nearest_original_component_vertex", "face_counts_by_material": face_counts}
-
-
-def transfer_dna_materials(
-    obj: bpy.types.Object,
-    components: list[tuple[str, str]],
-    component_vertices: dict[str, list[tuple[float, float, float]]],
-    materials: dict[str, bpy.types.Material],
-) -> dict:
-    material_keys = [material_key for _component, material_key in components]
-    material_index_by_key = {material_key: index for index, material_key in enumerate(material_keys)}
-    kdtrees = build_component_kdtrees(component_vertices)
-    obj.data.materials.clear()
-    for material_key in material_keys:
-        obj.data.materials.append(materials[material_key])
-
-    assignments: list[int] = []
-    raw_counts = {material_key: 0 for material_key in material_keys}
-    for polygon in obj.data.polygons:
-        center = polygon.center
-        strand_a_distance = nearest_distance(kdtrees["dna_orange"], center)
-        strand_b_distance = nearest_distance(kdtrees["dna_dark"], center)
-        base_distance = nearest_distance(kdtrees["rna_gold"], center)
-        closest_strand_key = "dna_orange" if strand_a_distance <= strand_b_distance else "dna_dark"
-        closest_strand_distance = min(strand_a_distance, strand_b_distance)
-        strand_symmetry = abs(strand_a_distance - strand_b_distance)
-        base_between_strands = strand_symmetry <= DNA_STRAND_SYMMETRY_MM
-        base_strict = base_distance + DNA_BASE_STRICT_MARGIN_MM < closest_strand_distance
-        base_soft = base_distance < closest_strand_distance + DNA_BASE_SOFT_MARGIN_MM
-        if base_between_strands and (base_strict or base_soft):
-            material_key = "rna_gold"
-        else:
-            material_key = closest_strand_key
-        raw_counts[material_key] += 1
-        assignments.append(material_index_by_key[material_key])
-
-    smoothed = smooth_material_assignments(obj.data, assignments, DNA_MATERIAL_SMOOTHING_ITERATIONS)
-    face_counts = {material_key: 0 for material_key in material_keys}
-    for polygon, material_index in zip(obj.data.polygons, smoothed):
-        polygon.material_index = material_index
-        face_counts[material_keys[material_index]] += 1
-    obj.data.update()
-    return {
-        "method": "dna_strand_priority_nearest_component_vertex",
-        "base_strict_margin_mm": DNA_BASE_STRICT_MARGIN_MM,
-        "base_soft_margin_mm": DNA_BASE_SOFT_MARGIN_MM,
-        "strand_symmetry_mm": DNA_STRAND_SYMMETRY_MM,
-        "smoothing_iterations": DNA_MATERIAL_SMOOTHING_ITERATIONS,
-        "raw_face_counts_by_material": raw_counts,
-        "face_counts_by_material": face_counts,
-    }
-
-
-def build_polished_nucleic_proxy(
-    asset_id: str,
-    name: str,
-    components: list[tuple[str, str]],
-    materials: dict[str, bpy.types.Material],
-    collection: bpy.types.Collection,
-    transfer_kind: str,
-    target_center: Vector,
-) -> dict:
-    scale = 0.04
-    vertices, faces, component_reports, component_vertices = merge_proxy_components(asset_id, components, scale)
-    obj = create_proxy_mesh_object(name, vertices, faces, materials[components[0][1]], collection, asset_id)
-    polish_report = apply_voxel_polish(obj)
-    if transfer_kind == "dna":
-        material_report = transfer_dna_materials(obj, components, component_vertices, materials)
-    else:
-        material_report = transfer_rna_materials(obj, components, component_vertices, materials)
-    pre_alignment_vertices, _pre_alignment_faces = mesh_data_from_object(obj)
-    pre_alignment_bounds = mesh_bounds(pre_alignment_vertices)
-    translate_mesh_vertices(obj, target_center - bounds_center(pre_alignment_bounds))
-    final_vertices, final_faces = mesh_data_from_object(obj)
-    final_bounds = mesh_bounds(final_vertices)
-    return {
-        "object": obj.name,
-        "asset_id": asset_id,
-        "style": NUCLEIC_PROXY_STYLE,
-        "source_coordinate_units": "angstrom",
-        "angstrom_to_mm": scale,
-        "components": component_reports,
-        "polish": polish_report,
-        "material_transfer": material_report,
-        "path_alignment": {
-            "source_center_before_alignment_mm": list(bounds_center(pre_alignment_bounds)),
-            "target_center_mm": [target_center.x, target_center.y, target_center.z],
-        },
-        "final_mesh": {**final_bounds, **mesh_topology_stats(final_vertices, final_faces)},
-    }
 
 
 def points_for_asset(asset: dict) -> tuple[list[dict], list[dict]]:
@@ -1386,7 +1122,7 @@ def validate_scene(report: dict) -> None:
         style = str(obj.get("style", ""))
         if "fallback" in style:
             fallback_objects.append(obj.name)
-        if style in {"pymol_surface_reduced", NUCLEIC_PROXY_STYLE, DIRECT_NUCLEIC_STYLE}:
+        if style in {"pymol_surface_reduced", DIRECT_NUCLEIC_STYLE}:
             surface_style_objects += 1
     report["scale_validation"] = {
         "expected_angstrom_to_mm": expected_scale,
@@ -1396,7 +1132,7 @@ def validate_scene(report: dict) -> None:
     report["surface_style_validation"] = {
         "surface_style_objects": surface_style_objects,
         "fallback_objects": fallback_objects,
-        "allowed_styles": ["pymol_surface_reduced", NUCLEIC_PROXY_STYLE, DIRECT_NUCLEIC_STYLE],
+        "allowed_styles": ["pymol_surface_reduced", DIRECT_NUCLEIC_STYLE],
     }
     report["object_count"] = len(bpy.data.objects)
     report["mesh_count"] = len(bpy.data.meshes)

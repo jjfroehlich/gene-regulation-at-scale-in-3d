@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -14,10 +15,10 @@ from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE_BLEND = ROOT / "outputs" / "canonical" / "gene_expression_surface_style.blend"
 DEFAULT_REPORT = ROOT / "outputs" / "canonical" / "gene_expression_surface_scene_report.json"
-DEFAULT_OUTPUT_DIR = ROOT / "experiments" / "flythrough_animation" / "outputs"
+DEFAULT_OUTPUT_DIR = ROOT / "outputs" / "animation"
 STORY_DURATION_SECONDS = 66.0
 
 
@@ -35,12 +36,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-mp4", type=Path)
     parser.add_argument("--frames-dir", type=Path)
     parser.add_argument("--render-profile", choices=("final", "review", "smoke"), default="final")
-    parser.add_argument("--duration-seconds", type=float, default=STORY_DURATION_SECONDS)
+    parser.add_argument("--duration-seconds", type=float, default=66.0)
     parser.add_argument("--fps", type=int, default=24)
     parser.add_argument("--resolution-x", type=int, default=1920)
     parser.add_argument("--resolution-y", type=int, default=1080)
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--skip-video-render", action="store_true")
+    parser.add_argument("--build-baseline", action="store_true", help="Build the original camera-route scene from canonical assets, without applying the dark treatment.")
+    parser.add_argument("--baseline-blend", type=Path)
+    parser.add_argument("--baseline-report", type=Path)
+    parser.add_argument("--render-staged", type=Path)
+    parser.add_argument("--checkpoints", action="store_true")
+    parser.add_argument("--sample-check", action="store_true")
+    parser.add_argument("--finalize-staged", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -1173,7 +1181,8 @@ def configure_render(args: argparse.Namespace, frame_end: int, frames_dir: Path)
     if hasattr(scene, "eevee"):
         render_samples = 20 if args.smoke_test else (40 if args.render_profile == "review" else 96)
         volumetric_samples = 32 if args.smoke_test else (48 if args.render_profile == "review" else 80)
-        scene.eevee.taa_render_samples = render_samples
+        if hasattr(scene.eevee, "taa_render_samples"):
+            scene.eevee.taa_render_samples = render_samples
         for attr, value in [
             ("use_gtao", True),
             ("gtao_distance", 24.0),
@@ -1255,7 +1264,7 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
     asset_locations = {asset["name"]: Vector(asset["location_mm"]) for asset in report.get("pdb_assets", [])}
     expected_assets = [asset["name"] for asset in report.get("pdb_assets", [])]
     dna_center = bbox_center(report["dna"]["components"])
-    compact_center = bbox_center(report["compact_mrna"]["components"])
+    compact_center = Vector(report["animation_compact_center_mm"]) if "animation_compact_center_mm" in report else bbox_center(report["compact_mrna"]["components"])
     actin = asset_locations["Actin protein"]
     ribosome = (asset_locations["Ribosome small subunit"] + asset_locations["Ribosome large subunit"]) * 0.5
     mrna_mid = point_at_fraction(mrna_points, 0.52)
@@ -1411,6 +1420,11 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
     dna_highlight = create_curve_object("Animation_highlight_DNA_3954bp_path", dna_points, 0.18, mats["dna_highlight"], collections["highlights"])
     mrna_highlight = create_curve_object("Animation_highlight_mRNA_1852nt_path", mrna_points, 0.13, mats["rna_highlight"], collections["highlights"])
     dna_highlight["educational_callout"] = "ACTB promoter + gene DNA; 3954 bp"
+    # The native fused surface already colors core and helix by DNA segment.
+    # A uniformly blue centerline obscures that coloring during the flythrough.
+    dna_highlight.hide_render = True
+    dna_highlight.hide_viewport = True
+    dna_highlight["disabled_reason"] = "Preserve matching core and helix segment colors"
     mrna_highlight["educational_callout"] = "actin mRNA; 1852 nt"
     animate_material_window(mats["dna_highlight"], frame_at(5, duration, fps), frame_at(29, duration, fps), 0.64, 0.75)
     animate_material_window(mats["rna_highlight"], frame_at(27, duration, fps), frame_at(57, duration, fps), 0.68, 0.85)
@@ -1741,6 +1755,29 @@ def create_animation(args: argparse.Namespace, report: dict, output_blend: Path,
 
 def main() -> None:
     args = parse_args()
+    if args.build_baseline and (args.baseline_blend or args.render_staged):
+        raise ValueError("--build-baseline cannot be combined with --baseline-blend or --render-staged")
+    if not args.build_baseline and not args.baseline_blend and not args.render_staged:
+        saved_baseline = DEFAULT_OUTPUT_DIR / "rollback" / "before_dark"
+        if (saved_baseline / "flythrough_animation.blend").exists():
+            args.baseline_blend = saved_baseline / "flythrough_animation.blend"
+            args.baseline_report = saved_baseline / "flythrough_animation_report.json"
+    if args.baseline_blend or args.render_staged:
+        if args.smoke_test:
+            args.render_profile = "smoke"
+            args.checkpoints = True
+            args.resolution_x = min(args.resolution_x, 640)
+            args.resolution_y = min(args.resolution_y, 360)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import dark_presentation
+        if args.render_staged: dark_presentation.render(args)
+        else:
+            dark_presentation.build(args)
+            if not args.skip_video_render:
+                args.render_staged = args.output_dir / "flythrough_animation.blend"
+                args.frames_dir = args.frames_dir or args.output_dir / ("checkpoints" if args.checkpoints else "frames")
+                dark_presentation.render(args)
+        return
     args.source_blend = as_path(args.source_blend)
     args.source_report = as_path(args.source_report)
     args.output_dir = as_path(args.output_dir)
@@ -1769,7 +1806,23 @@ def main() -> None:
 
     bpy.ops.wm.open_mainfile(filepath=str(args.source_blend))
     report = load_json(args.source_report)
+    # The approved film predates the still scene's compact-RNA revision.
+    # Retain that small source asset so a fresh checkout reproduces the film.
+    asset_dir = Path(__file__).resolve().parents[1] / "assets"
+    baseline_input = load_json(asset_dir / "baseline.json")
+    if hashlib.sha256((asset_dir / "compact_mrna.blend").read_bytes()).hexdigest() != baseline_input["geometry_sha256"]:
+        raise ValueError("Animation source geometry checksum mismatch")
+    existing = {name: bpy.data.objects[name] for name in baseline_input["objects"]}
+    with bpy.data.libraries.load(str(asset_dir / "compact_mrna.blend"), link=False) as (source, loaded):
+        loaded.objects = list(baseline_input["objects"])
+    for name, source_object in zip(baseline_input["objects"], loaded.objects):
+        if source_object is None:
+            raise ValueError(f"Missing animation source geometry: {name}")
+        existing[name].data = source_object.data
+        bpy.data.objects.remove(source_object, do_unlink=True)
+    report["animation_compact_center_mm"] = baseline_input["compact_center_mm"]
     animation_report = create_animation(args, report, output_blend, output_mp4, frames_dir)
+    animation_report["baseline_input"] = "animation/assets/baseline.json"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(animation_report, indent=2), encoding="utf-8")
     print(f"Wrote {output_blend}")

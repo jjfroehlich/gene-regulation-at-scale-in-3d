@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download RCSB mmCIF assets used by canonical or retained experiments."""
+"""Download RCSB mmCIF assets used by the canonical scene and its calibrators."""
 
 from __future__ import annotations
 

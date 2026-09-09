@@ -23,6 +23,7 @@ import scene_core as base  # noqa: E402
 import surface_assets as scene  # noqa: E402
 import contact_validation as contact_helpers  # noqa: E402
 import canonical_config as canonical  # noqa: E402
+import canonical_presentation as presentation
 import procedural_nucleic_geometry as nucleic_geometry  # noqa: E402
 
 
@@ -84,7 +85,7 @@ Canonical_BACKDROP_TOP_RIGHT = (0.96, 0.985, 0.995, 1.0)
 Canonical_BACKDROP_BOTTOM_LEFT = (0.985, 0.945, 0.82, 1.0)
 Canonical_BACKDROP_BOTTOM_RIGHT = (1.0, 0.885, 0.74, 1.0)
 Canonical_LABEL_MATERIALS = {"black", "label_grey", "scale_grey"}
-Canonical_CYCLES_SAMPLES = 64
+Canonical_CYCLES_SAMPLES = 64 if os.environ.get("CANONICAL_PREVIEW") == "1" else 256
 OVERVIEW_LABEL_POSITIONS = {
     "label_Transcription factor 4": (0.36, 0.39),
     "label_Cas9": (0.46, 0.38),
@@ -322,7 +323,8 @@ def set_material_color(material: bpy.types.Material, color: tuple[float, float, 
     if bsdf:
         bsdf.inputs["Base Color"].default_value = color
         label_material = material.name.split(".")[0] in Canonical_LABEL_MATERIALS
-        bsdf.inputs["Roughness"].default_value = 0.74 if label_material else 0.56
+        protein_color = color in (Canonical_MATERIAL_COLORS["protein_uniform_slate"], Canonical_MATERIAL_COLORS["protein_product_coral"])
+        bsdf.inputs["Roughness"].default_value = 0.74 if label_material else (0.48 if protein_color else 0.56)
         bsdf.inputs["Metallic"].default_value = 0.0
         set_bsdf_input(bsdf, ("Specular IOR Level", "Specular"), 0.44 if not label_material else 0.22)
         set_bsdf_input(bsdf, ("Coat Weight", "Coat"), 0.08 if not label_material else 0.0)
@@ -336,14 +338,18 @@ def set_material_color(material: bpy.types.Material, color: tuple[float, float, 
 
 
 def set_color_management(view_transform: str, look: str | None = None) -> None:
-    view_settings = bpy.context.scene.view_settings
-    transform_items = view_settings.bl_rna.properties["view_transform"].enum_items
-    if view_transform in {item.identifier for item in transform_items}:
-        view_settings.view_transform = view_transform
+    # Dynamic OCIO enum values are not reliably exposed by enum_items in background Blender.
+    settings = bpy.context.scene.view_settings
+    settings.view_transform = view_transform
     if look is not None:
-        look_items = view_settings.bl_rna.properties["look"].enum_items
-        if look in {item.identifier for item in look_items}:
-            view_settings.look = look
+        for identifier in (look, f"{view_transform} - {look}"):
+            try:
+                settings.look = identifier
+                break
+            except TypeError:
+                continue
+        else:
+            raise RuntimeError(f"Unavailable color-management look: {view_transform} / {look}")
 
 
 def configure_canonical_beauty_render() -> dict:
@@ -362,6 +368,22 @@ def configure_canonical_beauty_render() -> dict:
     cycles_settings = {}
     if scene_data.render.engine == "CYCLES":
         cycles = scene_data.cycles
+        preferences = bpy.context.preferences.addons["cycles"].preferences
+        device_backend = "CPU"
+        cycles.device = "CPU"
+        for backend in ("OPTIX", "CUDA", "HIP", "METAL", "ONEAPI"):
+            try:
+                preferences.compute_device_type = backend
+                preferences.get_devices()
+                devices = [device for device in preferences.devices if device.type == backend]
+                if devices:
+                    for device in preferences.devices:
+                        device.use = device.type == backend
+                    cycles.device = "GPU"
+                    device_backend = backend
+                    break
+            except (TypeError, RuntimeError):
+                continue
         cycles.samples = Canonical_CYCLES_SAMPLES
         cycles.preview_samples = 24
         cycles.max_bounces = 6
@@ -371,12 +393,13 @@ def configure_canonical_beauty_render() -> dict:
         if hasattr(cycles, "use_adaptive_sampling"):
             cycles.use_adaptive_sampling = True
         if hasattr(cycles, "adaptive_threshold"):
-            cycles.adaptive_threshold = 0.035
+            cycles.adaptive_threshold = 0.035 if Canonical_CYCLES_SAMPLES == 64 else 0.015
         if hasattr(cycles, "use_denoising"):
             cycles.use_denoising = True
         if hasattr(cycles, "use_fast_gi"):
             cycles.use_fast_gi = True
         cycles_settings = {
+            "device_backend": device_backend,
             "samples": int(cycles.samples),
             "preview_samples": int(cycles.preview_samples),
             "max_bounces": int(cycles.max_bounces),
@@ -386,24 +409,16 @@ def configure_canonical_beauty_render() -> dict:
             "adaptive_sampling": bool(getattr(cycles, "use_adaptive_sampling", False)),
             "adaptive_threshold": float(getattr(cycles, "adaptive_threshold", 0.0)),
         }
-    if hasattr(scene_data.eevee, "use_gtao"):
-        scene_data.eevee.use_gtao = True
-    if hasattr(scene_data.eevee, "gtao_distance"):
-        scene_data.eevee.gtao_distance = 5.0
-    if hasattr(scene_data.eevee, "gtao_factor"):
-        scene_data.eevee.gtao_factor = 0.55
-    scene_data.eevee.taa_render_samples = 96
-    scene_data.eevee.taa_samples = 32
-    scene_data.eevee.use_shadows = True
-    scene_data.eevee.shadow_resolution_scale = 1.5
-    if hasattr(scene_data.eevee, "use_fast_gi"):
-        scene_data.eevee.use_fast_gi = True
-    if hasattr(scene_data.eevee, "gi_diffuse_bounces"):
-        scene_data.eevee.gi_diffuse_bounces = 3
+    eevee = getattr(scene_data, "eevee", None)
+    for name, value in {"use_gtao": True, "gtao_distance": 5.0, "gtao_factor": 0.55,
+                        "taa_render_samples": 96, "taa_samples": 32, "use_shadows": True,
+                        "shadow_resolution_scale": 1.5, "use_fast_gi": True, "gi_diffuse_bounces": 3}.items():
+        if eevee is not None and hasattr(eevee, name):
+            setattr(eevee, name, value)
     set_color_management("AgX", "Medium High Contrast")
     if scene_data.view_settings.view_transform == "Standard":
         scene_data.view_settings.look = "None"
-    scene_data.view_settings.exposure = 0.55 if scene_data.render.engine == "CYCLES" else -0.12
+    scene_data.view_settings.exposure = 0.25 if scene_data.render.engine == "CYCLES" else -0.12
     scene_data.view_settings.gamma = 1.0
 
     world = scene_data.world or bpy.data.worlds.new("World")
@@ -413,7 +428,7 @@ def configure_canonical_beauty_render() -> dict:
     background = world.node_tree.nodes.get("Background")
     if background:
         background.inputs["Color"].default_value = Canonical_WORLD_COLOR
-        background.inputs["Strength"].default_value = 0.52 if scene_data.render.engine == "CYCLES" else 0.48
+        background.inputs["Strength"].default_value = 0.30 if scene_data.render.engine == "CYCLES" else 0.48
     return {
         "requested_engine": requested_engine,
         "engine": scene_data.render.engine,
@@ -422,7 +437,7 @@ def configure_canonical_beauty_render() -> dict:
         "world_color": list(Canonical_WORLD_COLOR),
         "world_strength": float(background.inputs["Strength"].default_value) if background else None,
         "cycles": cycles_settings,
-        "taa_render_samples": int(scene_data.eevee.taa_render_samples),
+        "taa_render_samples": getattr(eevee, "taa_render_samples", None),
         "view_transform": scene_data.view_settings.view_transform,
         "look": scene_data.view_settings.look,
         "exposure": float(scene_data.view_settings.exposure),
@@ -446,7 +461,7 @@ def camera_space_renderable_bounds(camera_name: str, include_backdrop: bool = Fa
     zs = []
     object_count = 0
     for obj in bpy.data.objects:
-        if obj.hide_render or obj.type in {"CAMERA", "LIGHT"}:
+        if obj.hide_render or obj.get("presentation_overlay") or obj.type in {"CAMERA", "LIGHT"}:
             continue
         if obj.get("canonical_beauty_backdrop") and not include_backdrop:
             continue
@@ -514,6 +529,17 @@ def backdrop_material(name: str, color: tuple[float, float, float, float]) -> bp
             bsdf.inputs["Emission"].default_value = color
         if "Emission Strength" in bsdf.inputs:
             bsdf.inputs["Emission Strength"].default_value = 0.10
+    # Keep the paper-like backdrop bright without adding fill light to the molecules.
+    output = nodes.get("Material Output")
+    emission = nodes.new("ShaderNodeEmission")
+    emission.inputs["Color"].default_value = color
+    emission.inputs["Strength"].default_value = 4.0
+    light_path = nodes.new("ShaderNodeLightPath")
+    mix = nodes.new("ShaderNodeMixShader")
+    material.node_tree.links.new(light_path.outputs["Is Camera Ray"], mix.inputs[0])
+    material.node_tree.links.new(bsdf.outputs[0], mix.inputs[1])
+    material.node_tree.links.new(emission.outputs[0], mix.inputs[2])
+    material.node_tree.links.new(mix.outputs[0], output.inputs["Surface"])
     return material
 
 
@@ -663,7 +689,7 @@ def add_canonical_beauty_environment(camera_name: str, collections: dict[str, bp
             scene_center_world,
             (-0.34 * view_width, 0.32 * view_height, front_z),
             10500.0,
-            74.0,
+            56.0,
             (1.0, 0.94, 0.84),
         ),
         create_area_light(
@@ -672,7 +698,7 @@ def add_canonical_beauty_environment(camera_name: str, collections: dict[str, bp
             camera,
             scene_center_world,
             (0.42 * view_width, -0.14 * view_height, front_z + 14.0),
-            2600.0,
+            1600.0,
             210.0,
             (0.84, 0.91, 1.0),
         ),
@@ -692,7 +718,7 @@ def add_canonical_beauty_environment(camera_name: str, collections: dict[str, bp
             camera,
             scene_center_world,
             (-0.08 * view_width, -0.46 * view_height, front_z + 26.0),
-            2600.0,
+            1000.0,
             210.0,
             (1.0, 0.88, 0.74),
         ),
@@ -810,10 +836,6 @@ def fit_camera_to_renderables(camera_name: str, margin_fraction: float = 0.075) 
     else:
         required_ortho = max(width / aspect, height)
     camera.data.ortho_scale = required_ortho / usable
-    if camera_name == "Camera_canonical_full_overview":
-        camera.data.ortho_scale *= 1.08
-        gutter_shift = camera.matrix_world.to_3x3() @ Vector((float(camera.data.ortho_scale) * 0.065, 0.0, 0.0))
-        camera.location += gutter_shift
     bpy.context.view_layer.update()
     return {
         "camera": camera_name,
@@ -975,213 +997,7 @@ def _create_group_line(
 
 
 def place_overview_labels(camera_name: str, collections: dict, materials: dict) -> dict:
-    camera = bpy.data.objects[camera_name]
-    inv = camera.matrix_world.inverted()
-    rows = []
-    _remove_annotation_guides()
-    if bpy.data.objects.get("label_ACTB_primary_canonical") is None:
-        primary = base.create_text(
-            "label_ACTB_primary_canonical", "ACTB protein 375 aa", (0.0, 0.0, 0.0), 1.55,
-            materials["black"], collections["Labels"], align="LEFT"
-        )
-        primary.rotation_euler = camera.rotation_euler
-
-    priority_labels = {
-        "label_mCherry/RFP tag": 0,
-        "label_Ribosome small subunit": 0,
-        "label_Ribosome large subunit": 0,
-    }
-    labels = sorted(
-        [obj for obj in bpy.data.objects if obj.type == "FONT" and obj.get("pdb_id")],
-        key=lambda obj: (priority_labels.get(obj.name, 1), -_projected_object_bounds(camera, obj)[3]),
-    )
-    molecule_boxes = {obj.name: _projected_object_bounds(camera, obj) for obj in labels}
-    occupied = []
-    for obj in labels:
-        molecule_box = molecule_boxes[obj.name]
-        anchor_norm = ((molecule_box[0] + molecule_box[1]) * 0.5, (molecule_box[2] + molecule_box[3]) * 0.5)
-        lines = obj.data.body.splitlines() or [obj.data.body]
-        box_width = max(0.026, min(0.078, 0.006 + max(len(line) for line in lines) * 0.00215))
-        box_height = max(0.017, len(lines) * 0.017)
-        gap = 0.003 if obj.name == "label_HuR-like RBP" else 0.001
-        half_width, half_height = box_width * 0.5, box_height * 0.5
-        candidates = [
-            (molecule_box[1] + gap + half_width, anchor_norm[1]),
-            (anchor_norm[0], molecule_box[3] + gap + half_height),
-            (molecule_box[0] - gap - half_width, anchor_norm[1]),
-            (anchor_norm[0], molecule_box[2] - gap - half_height),
-            (molecule_box[1] + gap + half_width, molecule_box[3] + gap + half_height),
-            (molecule_box[0] - gap - half_width, molecule_box[3] + gap + half_height),
-            (molecule_box[1] + gap + half_width, molecule_box[2] - gap - half_height),
-            (molecule_box[0] - gap - half_width, molecule_box[2] - gap - half_height),
-        ]
-        preferred = OVERVIEW_LABEL_OVERRIDES.get(obj.name)
-        if preferred is not None:
-            candidates.insert(0, preferred)
-        for extra_gap in (gap + 0.012, gap + 0.024, gap + 0.036):
-            candidates.extend(
-                [
-                    (molecule_box[1] + extra_gap + half_width, anchor_norm[1]),
-                    (anchor_norm[0], molecule_box[3] + extra_gap + half_height),
-                    (molecule_box[0] - extra_gap - half_width, anchor_norm[1]),
-                    (anchor_norm[0], molecule_box[2] - extra_gap - half_height),
-                    (molecule_box[1] + extra_gap + half_width, molecule_box[3] + extra_gap + half_height),
-                    (molecule_box[0] - extra_gap - half_width, molecule_box[3] + extra_gap + half_height),
-                    (molecule_box[1] + extra_gap + half_width, molecule_box[2] - extra_gap - half_height),
-                    (molecule_box[0] - extra_gap - half_width, molecule_box[2] - extra_gap - half_height),
-                ]
-            )
-        valid = []
-        for candidate in candidates:
-            box = _label_box(candidate, box_width, box_height)
-            inside = box[0] >= 0.08 and box[1] <= 0.775 and box[2] >= 0.08 and box[3] <= 0.93
-            ribosome_cluster = {"label_Ribosome small subunit", "label_Ribosome large subunit"}
-            overlaps_other_molecule = any(
-                other_name != obj.name
-                and not ({obj.name, other_name} <= ribosome_cluster)
-                and _boxes_overlap(box, other_box, pad=0.002)
-                for other_name, other_box in molecule_boxes.items()
-            )
-            if inside and not overlaps_other_molecule and not any(_boxes_overlap(box, other) for other in occupied):
-                valid.append((candidate, box))
-        if not valid:
-            for candidate in candidates:
-                box = _label_box(candidate, box_width, box_height)
-                inside = box[0] >= 0.08 and box[1] <= 0.775 and box[2] >= 0.08 and box[3] <= 0.93
-                if inside and not any(_boxes_overlap(box, other) for other in occupied):
-                    valid.append((candidate, box))
-        preferred_valid = next((item for item in valid if preferred is not None and item[0] == preferred), None)
-        if preferred_valid is not None:
-            (x_norm, y_norm), placed_box = preferred_valid
-        elif valid:
-            (x_norm, y_norm), placed_box = min(valid, key=lambda item: abs(item[0][0] - anchor_norm[0]) + abs(item[0][1] - anchor_norm[1]))
-        else:
-            x_norm = max(0.08 + box_width * 0.5, min(0.775 - box_width * 0.5, candidates[0][0]))
-            y_norm = max(0.08 + box_height * 0.5, min(0.93 - box_height * 0.5, candidates[0][1]))
-            placed_box = _label_box((x_norm, y_norm), box_width, box_height)
-            placed_box = min(
-                (_label_box(candidate, box_width, box_height) for candidate in candidates),
-                key=lambda box: sum(1 for other in occupied if _boxes_overlap(box, other)),
-            )
-            x_norm = (placed_box[0] + placed_box[1]) * 0.5
-            y_norm = (placed_box[2] + placed_box[3]) * 0.5
-        occupied.append(placed_box)
-        molecule_anchor = Vector(obj.get("molecule_anchor_mm", obj.location))
-        molecule_depth = (inv @ molecule_anchor).z
-        scene_depth = molecule_depth + 1.2
-        obj.location = _camera_overlay_point(camera, x_norm, y_norm, scene_depth)
-        obj.data.size = min(float(obj.data.size), 1.00)
-        obj.data.align_x = "CENTER"
-        obj.data.align_y = "CENTER"
-        displacement = abs(anchor_norm[0] - x_norm) + abs(anchor_norm[1] - y_norm)
-        obj["overview_label_position"] = [x_norm, y_norm]
-        rows.append(
-            {
-                "object": obj.name,
-                "anchor_position": [anchor_norm[0], anchor_norm[1]],
-                "view_position": [x_norm, y_norm],
-                "estimated_view_box": [box_width, box_height],
-                "molecule_projected_bounds": list(molecule_box),
-                "placement_space": "world_scene_at_molecule_depth",
-                "camera_local_depth_mm": scene_depth,
-                "leader": None,
-                "displacement": displacement,
-            }
-        )
-
-    compact_obj = bpy.data.objects.get(COMPACT_CALLOUT["object"])
-    compact_row = None
-    if compact_obj is not None:
-        compact_meshes = [
-            obj
-            for obj in bpy.data.objects
-            if obj.type == "MESH" and obj.name.startswith("actin mRNA compact")
-        ]
-        compact_bounds = _projected_objects_bounds(camera, compact_meshes)
-        compact_anchor = (compact_bounds[1], compact_bounds[3])
-        compact_position = (
-            compact_anchor[0] + COMPACT_CALLOUT["offset"][0],
-            compact_anchor[1] + COMPACT_CALLOUT["offset"][1],
-        )
-        label_box = (
-            compact_position[0], compact_position[0] + 0.060,
-            compact_position[1] - 0.010, compact_position[1] + 0.010,
-        )
-        compact_local = inv @ Vector(compact_obj.get("molecule_anchor_mm", compact_obj.location))
-        compact_obj.data.body = COMPACT_CALLOUT["text"]
-        compact_obj.data.align_x = "LEFT"
-        compact_obj.data.align_y = "CENTER"
-        compact_obj.data.size = 1.34
-        compact_obj.location = _camera_overlay_point(camera, *compact_position, compact_local.z + 1.2)
-        compact_obj["overview_label_position"] = list(compact_position)
-        compact_row = {
-            "object": COMPACT_CALLOUT["object"],
-            "text": COMPACT_CALLOUT["text"],
-            "anchor_position": list(compact_anchor),
-            "view_position": list(compact_position),
-            "offset": list(COMPACT_CALLOUT["offset"]),
-            "molecule_projected_bounds": list(compact_bounds),
-            "estimated_view_box": list(label_box),
-            "overlaps_molecule": _boxes_overlap(label_box, compact_bounds, pad=0.004),
-            "leader": None,
-            "placement_space": "world_scene_at_molecule_depth",
-        }
-
-    primary_rows = []
-    for object_name, spec in PRIMARY_CALLOUTS.items():
-        obj = bpy.data.objects.get(object_name)
-        if obj is None:
-            continue
-        x_norm, y_norm = spec["view_position"]
-        obj.data.body = spec["text"]
-        obj.data.align_x = "LEFT"
-        obj.data.align_y = "CENTER"
-        obj.data.size = 1.55
-        obj.location = _camera_overlay_point(camera, x_norm, y_norm)
-        line_name = _create_group_line(
-            f"overview_group_line_{object_name}", camera, spec["span"], spec["line_x"], collections, materials
-        )
-        obj["overview_label_position"] = [x_norm, y_norm]
-        primary_rows.append(
-            {
-                "object": object_name,
-                "text": spec["text"],
-                "view_position": [x_norm, y_norm],
-                "span": list(spec["span"]),
-                "line": line_name,
-                "line_x": spec["line_x"],
-                "leader": None,
-            }
-        )
-    bpy.context.view_layer.update()
-    collision_pairs = []
-    molecule_overlap_pairs = []
-    for left_index, left in enumerate(rows):
-        left_box = _label_box(tuple(left["view_position"]), *left["estimated_view_box"])
-        for right in rows[left_index + 1:]:
-            right_box = _label_box(tuple(right["view_position"]), *right["estimated_view_box"])
-            if _boxes_overlap(left_box, right_box, pad=0.002):
-                collision_pairs.append([left["object"], right["object"]])
-        for molecule_name, molecule_box in molecule_boxes.items():
-            ribosome_cluster = {"label_Ribosome small subunit", "label_Ribosome large subunit"}
-            if (
-                molecule_name != left["object"]
-                and not ({left["object"], molecule_name} <= ribosome_cluster)
-                and _boxes_overlap(left_box, molecule_box, pad=0.001)
-            ):
-                molecule_overlap_pairs.append([left["object"], molecule_name])
-    return {
-        "policy": "three right-side camera-space vertical lines identify protein, mRNA, and DNA extents; the mRNA and DNA lines run in parallel where both molecules occupy the same projected height; PDB labels remain at molecule depth and are packed immediately outside projected molecule bounds without leaders or backings",
-        "camera": camera_name,
-        "placed_label_count": len(rows) + len(primary_rows) + (1 if compact_row else 0),
-        "primary_callouts": primary_rows,
-        "compact_callout": compact_row,
-        "rows": rows,
-        "collision_pairs": collision_pairs,
-        "molecule_overlap_pairs": molecule_overlap_pairs,
-        "maximum_displacement": max((row["displacement"] for row in rows), default=0.0),
-        "maximum_displacement_object": max(rows, key=lambda row: row["displacement"])["object"] if rows else None,
-    }
+    return presentation.place_overview_labels(sys.modules[__name__], camera_name, collections, materials)
 
 
 def _asset_report_location(asset_reports: list[dict], name: str) -> Vector:
@@ -1349,44 +1165,11 @@ def create_detail_title(key: str, camera_name: str, collections: dict, materials
         if obj.get("canonical_detail_title"):
             bpy.data.objects.remove(obj, do_unlink=True)
     camera = bpy.data.objects[camera_name]
-    obj = base.create_text(
-        f"detail_title_{key}",
-        DETAIL_TITLES[key],
-        (0.0, 0.0, 0.0),
-        max(0.32, float(camera.data.ortho_scale) * 0.036),
-        materials["black"],
-        collections["Labels"],
-        align="LEFT",
-    )
-    obj.location = _camera_overlay_point(camera, 0.07, 0.91)
-    obj.rotation_euler = camera.rotation_euler
-    obj.hide_render = False
-    obj["canonical_detail_title"] = True
-    obj["detail_view"] = key
-    if key == "ribosome_trna":
-        source = bpy.data.objects.get("label_Standalone tRNA")
-        if source is not None:
-            anchor_local = camera.matrix_world.inverted() @ Vector(source.get("molecule_anchor_mm", source.location))
-            view_width, view_height = camera_view_dimensions(camera)
-            anchor_norm = (anchor_local.x / view_width + 0.5, anchor_local.y / view_height + 0.5)
-            label_position = (
-                max(0.10, min(0.74, anchor_norm[0] + 0.045)),
-                max(0.12, min(0.84, anchor_norm[1] + 0.025)),
-            )
-            trna = base.create_text(
-                "detail_label_trna",
-                "yeast tRNA-Phe (4TNA)",
-                (0.0, 0.0, 0.0),
-                max(0.24, float(camera.data.ortho_scale) * 0.023),
-                materials["black"],
-                collections["Labels"],
-                align="LEFT",
-            )
-            trna.location = _camera_overlay_point(camera, *label_position)
-            trna.rotation_euler = camera.rotation_euler
-            trna.hide_render = False
-            trna["canonical_detail_title"] = True
-            trna["detail_view"] = key
+    title, caption = presentation.DETAILS[key]
+    obj = presentation.text(sys.modules[__name__], camera, collections, materials,
+                            f"detail_title_{key}", title, .07, .92, 52, detail=True)
+    presentation.text(sys.modules[__name__], camera, collections, materials,
+                      f"detail_caption_{key}", caption, .07, .855, 26, detail=True)
     return obj.name
 
 
@@ -1781,10 +1564,11 @@ def main() -> None:
         materials,
     )
     report["detail_context"] = add_detail_context_curves(mrna["path"], collections, materials)
+    presentation.add_polymerase_dna_context(sys.modules[__name__], collections)
     for obj in bpy.data.objects:
-        if obj.type == "FONT":
+        if obj.type == "FONT" or any(c.name == "Scale bars" for c in obj.users_collection):
             obj.hide_render = True
-    full_overview_camera_fit = fit_camera_to_renderables(camera_names["full_overview"])
+    full_overview_camera_fit = fit_camera_to_renderables(camera_names["full_overview"], margin_fraction=0.05)
     label_orientation = orient_labels_to_camera(camera_names["full_overview"])
     overview_label_placement = place_overview_labels(camera_names["full_overview"], collections, materials)
     report["beauty_rendering"]["environment"] = add_canonical_beauty_environment(camera_names["full_overview"], collections)
@@ -1800,7 +1584,8 @@ def main() -> None:
     report["detail_render_specs"] = {
         key: {
             "camera": camera_names[key],
-            "title": DETAIL_TITLES[key],
+            "title": presentation.DETAILS[key][0],
+            "caption": presentation.DETAILS[key][1],
             "output": str(DETAIL_PREVIEWS[key]),
             "object_patterns": list(FOCUS_OBJECT_PATTERNS[key]),
             "margin_fraction": 0.12,
@@ -1820,6 +1605,7 @@ def main() -> None:
 
     overview_visibility = snapshot_render_visibility()
     detail_runs = {}
+    closeup_runs = {}
     if overview_only and REPORT_PATH.exists():
         detail_runs = json.loads(REPORT_PATH.read_text(encoding="utf-8")).get("detail_rendering", {})
     for key in (() if overview_only else DETAIL_TITLES):
@@ -1842,6 +1628,8 @@ def main() -> None:
         title_object = create_detail_title(key, camera_names[key], collections, materials)
         bpy.context.scene.render.filepath = str(DETAIL_PREVIEWS[key])
         bpy.ops.render.render(write_still=True)
+        closeup_runs[key] = presentation.render_closeup(
+            sys.modules[__name__], key, camera, collections, materials, manifest["units"])
         detail_runs[key] = {
             "visibility": visibility,
             "camera_fit": camera_fit,
@@ -1854,10 +1642,15 @@ def main() -> None:
         if obj.get("canonical_detail_title"):
             bpy.data.objects.remove(obj, do_unlink=True)
     report["detail_rendering"] = detail_runs
+    report["closeup_rendering"] = closeup_runs
+    report["outputs"]["closeup_previews"] = {k: v["output"] for k, v in closeup_runs.items()}
     bpy.context.scene.camera = primary_camera
     report["beauty_rendering"]["environment"] = add_canonical_beauty_environment(camera_names["full_overview"], collections)
+    bpy.context.scene.render.filepath = str(PREVIEW_PATH)
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
+    if not overview_only:
+        presentation.refresh_documentation(sys.modules[__name__], closeup_runs)
     print(f"Wrote {BLEND_PATH}")
     print(f"Wrote {PREVIEW_PATH}")
     print(f"Wrote {REPORT_PATH}")

@@ -21,17 +21,11 @@ env/
 # Local tool checkouts and plugin/runtime environments
 tools/
 
-# Generated canonical renders, Blender scenes, and reports
-outputs/
+# Generated scenes, videos, frame caches, reports, and validation output
+/outputs/
 
 # Local reference images kept outside Git.
 /2014-mol-mach-poster_editing_simplified*.jpg
-
-# Generated experiment artifacts kept locally only
-experiments/**/outputs/
-experiments/**/assets/pymol_exports/
-experiments/procedural_nucleic_acids/assets/optimization_v3/raw_surfaces/
-experiments/procedural_nucleic_acids/assets/
 
 # Blender/editor generated backups and session files
 *.blend
@@ -44,6 +38,11 @@ experiments/procedural_nucleic_acids/assets/
 *.fbx
 *.glb
 
-# Regenerated PyMOL exports and scratch assets
+# Regenerated raw exports; reduced molecular OBJ assets remain tracked
 assets/pymol_exports/surface_assets/
 assets/pymol_exports/scratch/
+
+# Source, config, tests, docs/images, assets/rcsb, and reduced surface assets are tracked.
+
+# Authored animation input: historical compact RNA used by the approved film.
+!/animation/assets/compact_mrna.blend

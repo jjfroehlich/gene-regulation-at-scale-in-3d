@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "compact_center_mm": [
+    28.339611053466797,
+    -86.27037048339844,
+    95.03713989257812
+  ],
+  "objects": [
+    "actin mRNA compact direct fused surface 3' UTR",
+    "actin mRNA compact direct fused surface 5' UTR",
+    "actin mRNA compact direct fused surface coding sequence",
+    "actin mRNA compact paired stem bridges"
+  ],
+  "description": "Original flythrough compact RNA geometry and framing center, retained independently of later canonical still-scene changes.",
+  "geometry_sha256": "cc68d6cea080f8fa4a4998c98f34744bdd26bcfd1c42f634b4924f1fcfb6d7b5"
+}
